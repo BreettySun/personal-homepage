@@ -61,9 +61,14 @@ function onKey(e: KeyboardEvent) {
 }
 
 function onGlobalKey(e: KeyboardEvent) {
+  if (e.key !== '~') return
   const target = e.target as HTMLElement | null
-  const typing = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
-  if (e.key === '~' && (!typing || target === inputEl.value)) { e.preventDefault(); void toggle() }
+  const typing = !!target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
+  // 终端自己的输入框里，只有空行时 ~ 才当开关；否则让它正常打出来（`cd ~`）。
+  const toggles = !typing || (target === inputEl.value && input.value === '')
+  if (!toggles) return
+  e.preventDefault()
+  void toggle()
 }
 
 onMounted(() => { if (matchMedia('(pointer: fine)').matches) window.addEventListener('keydown', onGlobalKey) })
