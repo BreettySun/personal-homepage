@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useHead } from '@unhead/vue'
 import Legend from '@/components/Legend.vue'
 import TerrainCanvas from '@/components/TerrainCanvas.vue'
+import ThemeToggle from '@/components/ThemeToggle.vue'
 import { loadEssays } from '@/content/essays'
 import { loadProjects } from '@/content/projects'
 import type { MarkerId } from '@/terrain/heightfield'
@@ -77,6 +78,7 @@ function onSceneFailed() { use3d.value = false; endIntro() }
     <img v-else class="fallback" src="/terrain-fallback.svg" alt="">
     <div v-if="intro" ref="introName" class="intro-name">Scream</div>
     <Legend ref="legendEl" :essay-count="essayCount" :project-count="projectCount" :params="params" :intro="intro" @navigate="go" @hover="hovered = $event" />
+    <div class="home-theme"><ThemeToggle /></div>
     <div class="mono hint">scroll · altitude &nbsp;&nbsp; ~ · terminal</div>
   </main>
 </template>
@@ -85,6 +87,7 @@ function onSceneFailed() { use3d.value = false; endIntro() }
 .home { position: fixed; inset: 0; overflow: hidden; background: var(--bg); }
 .fallback { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; color: var(--fg); }
 .intro-name { position: absolute; left: 50%; top: 45%; font-size: 96px; font-weight: 600; letter-spacing: .14em; opacity: 0; will-change: transform; }
+.home-theme { position: absolute; top: 20px; right: 24px; }
 .hint { position: absolute; right: 24px; bottom: 20px; }
 @media (pointer: coarse) { .hint { display: none; } }
 </style>
