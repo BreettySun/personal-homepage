@@ -1,5 +1,6 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
+import { nextTick } from 'vue'
 import Legend from '@/components/Legend.vue'
 
 const params = { weather: 'rain', season: 'autumn', seed: 0x5c7e, intensity: 0.6, source: 'live' } as const
@@ -18,6 +19,13 @@ describe('Legend', () => {
     const w = mount(Legend, { props: { essayCount: 8, projectCount: 1, params: { ...params, source: 'manual' }, intro: false } })
     expect(w.text()).toContain('手动')
     expect(w.text()).toContain('0x5c7e')
+  })
+  it('fills in the Beijing date only after mount', async () => {
+    const w = mount(Legend, { props: { essayCount: 8, projectCount: 1, params, intro: false } })
+    expect(w.find('.meta-line').text()).not.toMatch(/\d{4}-\d{2}-\d{2}/)
+    await nextTick()
+    const beijingToday = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Shanghai' }).format(new Date())
+    expect(w.find('.meta-line').text()).toContain(beijingToday)
   })
   it('hides the name while the intro is playing', () => {
     const w = mount(Legend, { props: { essayCount: 8, projectCount: 1, params, intro: true } })

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import MetaLine from '@/components/MetaLine.vue'
 import ParamPanel from '@/components/ParamPanel.vue'
 import type { MarkerId } from '@/terrain/heightfield'
@@ -11,7 +11,10 @@ const showPanel = ref(false)
 
 const zhWeather = { clear: '晴', cloudy: '阴', rain: '雨', snow: '雪' } as const
 const zhSource = { live: '实时', default: '默认', manual: '手动' } as const
-const today = computed(() => new Date().toISOString().slice(0, 10))
+// 日期按北京时区算，且必须在客户端算：预渲染会把构建当天的 UTC 日期焊死在 HTML 里。
+// MetaLine 会跳过空串，所以 SSR 输出 `// 北京 · 晴 · 默认`，挂载后再补上日期。
+const today = ref('')
+onMounted(() => { today.value = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Shanghai' }).format(new Date()) })
 const rows: { id: MarkerId; glyph: string; label: string; path: string }[] = [
   { id: 'essays', glyph: '●', label: '文章', path: 'essays/' },
   { id: 'projects', glyph: '▲', label: '项目', path: 'projects/' },
