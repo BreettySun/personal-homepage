@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { RouterLink, RouterView } from 'vue-router'
 import ThemeToggle from '@/components/ThemeToggle.vue'
+import Terminal from '@/terminal/Terminal.vue'
 </script>
 
 <template>
@@ -20,6 +21,9 @@ import ThemeToggle from '@/components/ThemeToggle.vue'
       <component :is="Component" :key="$route.fullPath" />
     </Transition>
   </RouterView>
+  <ClientOnly>
+    <Terminal />
+  </ClientOnly>
 </template>
 
 <style>

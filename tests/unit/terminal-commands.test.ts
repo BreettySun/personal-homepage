@@ -1,0 +1,43 @@
+import { describe, expect, it, vi } from 'vitest'
+import { execute } from '@/terminal/registry'
+import type { TerminalContext } from '@/terminal/types'
+
+function makeCtx(): TerminalContext {
+  return {
+    essays: [{ slug: '丘陵', title: '丘陵', date: '2025-11-30', city: '随州', weather: '雨' }] as never,
+    projects: [{ name: '地形志', year: 2026, stack: ['Vue'] }] as never,
+    navigate: vi.fn(), setTheme: vi.fn(), setManual: vi.fn(), close: vi.fn(),
+    params: { weather: 'rain', season: 'autumn', seed: 0x5c7e, intensity: 0.6, source: 'live' },
+  }
+}
+
+describe('terminal commands', () => {
+  it('ls lists essays by default and projects on request', async () => {
+    const ctx = makeCtx()
+    expect(await execute('ls', ctx)).toEqual(['2025-11-30  丘陵  # 随州 · 雨'])
+    expect(await execute('ls projects', ctx)).toEqual(['2026  地形志  # Vue'])
+  })
+  it('cat navigates and closes', async () => {
+    const ctx = makeCtx()
+    await execute('cat 丘陵', ctx)
+    expect(ctx.navigate).toHaveBeenCalledWith('/essays/丘陵')
+    expect(ctx.close).toHaveBeenCalled()
+    expect(await execute('cat 不存在', ctx)).toEqual(['cat: 不存在: No such file'])
+  })
+  it('theme, seed and weather write through the context', async () => {
+    const ctx = makeCtx()
+    await execute('theme dark', ctx)
+    expect(ctx.setTheme).toHaveBeenCalledWith('dark')
+    await execute('seed 0x1234', ctx)
+    expect(ctx.setManual).toHaveBeenCalledWith({ seed: 0x1234 })
+    await execute('weather 雪', ctx)
+    expect(ctx.setManual).toHaveBeenCalledWith({ weather: 'snow' })
+    expect(await execute('weather', ctx)).toEqual(['北京 · 雨 · 秋 · 实时 · intensity 0.6'])
+  })
+  it('clear returns the clear sentinel and unknown commands hint help', async () => {
+    const ctx = makeCtx()
+    expect(await execute('clear', ctx)).toEqual({ clear: true })
+    expect(await execute('rm -rf /', ctx)).toEqual(['rm: command not found. 试试 help'])
+    expect(await execute('sudo', ctx)).toEqual(['你没有权限，去找老王。'])
+  })
+})
