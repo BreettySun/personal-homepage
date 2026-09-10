@@ -1,3 +1,4 @@
+import '@fontsource/jetbrains-mono/400.css'
 import { ViteSSG } from 'vite-ssg'
 import App from './App.vue'
 import { loadEssays } from './content/essays'
