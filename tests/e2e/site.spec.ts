@@ -29,6 +29,19 @@ test('essay page is server-rendered (no JS)', async ({ browser }) => {
   await ctx.close()
 })
 
+test('a CJK essay URL resolves to its own prerendered page', async ({ browser }) => {
+  const ctx = await browser.newContext({ javaScriptEnabled: false })
+  const page = await ctx.newPage()
+  // vite-ssg writes the route string verbatim as a directory name, so the route
+  // must stay UTF-8 (`/essays/丘陵`). `vite preview` — like a real static host —
+  // percent-decodes the request path, so an encoded route name would 404 here.
+  await page.goto(`/essays/${encodeURIComponent('丘陵')}/`)
+  await expect(page.locator('.essay-body p').first()).toBeVisible()
+  expect(await page.locator('.essay-body p').count()).toBeGreaterThan(0)
+  await expect(page.locator('.essay-title')).toHaveText('丘陵')
+  await ctx.close()
+})
+
 test('theme toggle flips data-theme and persists', async ({ page }) => {
   await page.goto('/essays')
   const html = page.locator('html')

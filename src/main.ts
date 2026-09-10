@@ -12,5 +12,5 @@ export const createApp = ViteSSG(
 )
 
 export async function includedRoutes(paths: string[]) {
-  return paths.flatMap(p => (p === '/essays/:slug' ? loadEssays().map(e => `/essays/${encodeURIComponent(e.slug)}`) : [p]))
+  return paths.flatMap(p => (p === '/essays/:slug' ? loadEssays().map(e => `/essays/${e.slug}`) : [p]))
 }
