@@ -8,7 +8,7 @@ import { useTerrainParams } from '@/weather/terrainParams'
 import { useTheme } from '@/theme/theme'
 
 const props = defineProps<{ hovered: MarkerId | null; opacity: number }>()
-const emit = defineEmits<{ hover: [id: MarkerId | null]; select: [id: MarkerId]; ready: [] }>()
+const emit = defineEmits<{ hover: [id: MarkerId | null]; select: [id: MarkerId]; ready: []; failed: [] }>()
 
 const canvas = ref<HTMLCanvasElement>()
 let sceneApi: TerrainScene | null = null
@@ -40,17 +40,25 @@ function onClick(e: PointerEvent) {
 }
 
 onMounted(async () => {
-  const { createTerrainScene, ALTITUDE } = await import('@/terrain/scene')
-  if (!canvas.value) return
-  altitude = ALTITUDE.initial
-  sceneApi = createTerrainScene(canvas.value, {
-    seed: params.value.seed,
-    colors: readColors(),
-    quality: isCoarsePointer() || window.innerWidth < 768 ? 'low' : 'high',
-  })
-  sceneApi.setWeather(params.value.weather, params.value.season, params.value.intensity)
-  sceneApi.setOpacity(props.opacity)
-  emit('ready')
+  // supportsWebGL() 只证明能拿到 context；真正建场景仍可能抛（驱动、显存、context lost）。
+  // 这时必须让首页退回静态图，否则地形和图例都卡在 opacity 0。
+  try {
+    const { createTerrainScene, ALTITUDE } = await import('@/terrain/scene')
+    if (!canvas.value) return
+    altitude = ALTITUDE.initial
+    sceneApi = createTerrainScene(canvas.value, {
+      seed: params.value.seed,
+      colors: readColors(),
+      quality: isCoarsePointer() || window.innerWidth < 768 ? 'low' : 'high',
+    })
+    sceneApi.setWeather(params.value.weather, params.value.season, params.value.intensity)
+    sceneApi.setOpacity(props.opacity)
+    emit('ready')
+  } catch (err) {
+    sceneApi = null
+    console.warn('[terrain] 场景创建失败，回退到静态地形图', err)
+    emit('failed')
+  }
 })
 
 watch(() => params.value.seed, s => sceneApi?.setSeed(s))

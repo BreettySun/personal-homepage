@@ -67,11 +67,13 @@ onMounted(() => {
   }
 })
 function onSceneReady() { if (intro.value) void playIntro() }
+/** 地形建不起来：退回静态图，并保证开场动画不会把图例名字留在隐藏状态。 */
+function onSceneFailed() { use3d.value = false; endIntro() }
 </script>
 
 <template>
   <main class="home">
-    <TerrainCanvas v-if="use3d" :hovered="hovered" :opacity="opacity" @hover="hovered = $event" @select="go" @ready="onSceneReady" />
+    <TerrainCanvas v-if="use3d" :hovered="hovered" :opacity="opacity" @hover="hovered = $event" @select="go" @ready="onSceneReady" @failed="onSceneFailed" />
     <img v-else class="fallback" src="/terrain-fallback.svg" alt="">
     <div v-if="intro" ref="introName" class="intro-name">Scream</div>
     <Legend ref="legendEl" :essay-count="essayCount" :project-count="projectCount" :params="params" :intro="intro" @navigate="go" @hover="hovered = $event" />
