@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { RouterLink, RouterView } from 'vue-router'
+import { useHead } from '@unhead/vue'
 import ThemeToggle from '@/components/ThemeToggle.vue'
 import Terminal from '@/terminal/Terminal.vue'
+
+// unhead's SSR defaults would otherwise overwrite index.html's lang="zh-CN".
+useHead({ htmlAttrs: { lang: 'zh-CN' } })
 </script>
 
 <template>
