@@ -72,7 +72,7 @@ describe('Terminal', () => {
     press(window, '~')
     await flushPromises()
 
-    const input = w.find('.term-prompt input')
+    const input = w.find<HTMLInputElement>('.term-prompt input')
     expect(input.element.value).toBe('')
     press(input.element, '~')
     await flushPromises()
