@@ -34,6 +34,35 @@ describe('parseEssay', () => {
   })
 })
 
+describe('parseEssay lead paragraph', () => {
+  const mk = (body: string, extra = '') =>
+    parseEssay(`---\ntitle: t\ndate: 2026-01-01\ncity: c\nweather: w\n${extra}---\n${body}`, '/content/essays/t.md')
+
+  it('drops a single-sentence lead paragraph that already became the summary', () => {
+    const e = mk('第一段只有一句。\n\n第二段留下。\n')
+    expect(e.summary).toBe('第一段只有一句。')
+    expect(e.html).not.toContain('第一段只有一句。')
+    expect(e.html).toContain('<p>第二段留下。</p>')
+  })
+
+  it('keeps a lead paragraph that says more than the summary', () => {
+    const e = mk('第一句。第二句还在同一段。\n\n第二段留下。\n')
+    expect(e.summary).toBe('第一句。')
+    expect(e.html).toContain('<p>第一句。第二句还在同一段。</p>')
+  })
+
+  it('never touches the body when summary is explicit', () => {
+    const e = mk('第一段只有一句。\n\n第二段留下。\n', 'summary: 自己写的摘要\n')
+    expect(e.summary).toBe('自己写的摘要')
+    expect(e.html).toContain('<p>第一段只有一句。</p>')
+  })
+
+  it('counts words on the full body even when the lead paragraph is dropped', () => {
+    const body = '第一段只有一句。\n\n第二段留下。\n'
+    expect(mk(body).wordCount).toBe(mk(body, 'summary: 自己写的摘要\n').wordCount)
+  })
+})
+
 describe('groupByYear', () => {
   it('groups newest year first, keeping input order inside a year', () => {
     const mk = (slug: string, date: string) => parseEssay(`---\ntitle: ${slug}\ndate: ${date}\ncity: c\nweather: w\n---\n正文。`, `/content/essays/${slug}.md`)

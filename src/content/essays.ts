@@ -12,12 +12,25 @@ function requireString(data: Record<string, unknown>, key: string, filePath: str
   return v.trim()
 }
 
+/**
+ * 摘要是从正文推导来的时候，第一段常常就是那一句，页面上会重复一次。
+ * 只在"第一个非空段落 === 推导出的摘要"时把它从正文里拿掉；显式 summary 不动正文。
+ */
+function dropLeadParagraph(body: string, summary: string): string {
+  const parts = body.split(/\r?\n[ \t]*\r?\n/)
+  const i = parts.findIndex(p => p.trim() !== '')
+  if (i === -1 || stripMarkdown(parts[i]).trim() !== summary) return body
+  return parts.slice(i + 1).join('\n\n')
+}
+
 export function parseEssay(raw: string, filePath: string): Essay {
   const { data, body } = parseFrontmatter(raw)
   const date = requireString(data, 'date', filePath)
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error(`${filePath}: date 必须是 YYYY-MM-DD，得到 "${date}"`)
   const plain = stripMarkdown(body)
   const wordCount = countWords(plain)
+  const explicitSummary = typeof data.summary === 'string' && data.summary ? data.summary : null
+  const summary = explicitSummary ?? firstSentence(plain)
   return {
     slug: slugFromPath(filePath),
     title: requireString(data, 'title', filePath),
@@ -25,8 +38,8 @@ export function parseEssay(raw: string, filePath: string): Essay {
     year: Number(date.slice(0, 4)),
     city: requireString(data, 'city', filePath),
     weather: requireString(data, 'weather', filePath),
-    summary: typeof data.summary === 'string' && data.summary ? data.summary : firstSentence(plain),
-    html: renderMarkdown(body),
+    summary,
+    html: renderMarkdown(explicitSummary ? body : dropLeadParagraph(body, summary)),
     wordCount,
     readingMinutes: readingMinutes(wordCount),
   }
