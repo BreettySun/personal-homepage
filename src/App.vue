@@ -17,7 +17,7 @@ import ThemeToggle from '@/components/ThemeToggle.vue'
   </header>
   <RouterView v-slot="{ Component }">
     <Transition name="page" mode="out-in">
-      <component :is="Component" />
+      <component :is="Component" :key="$route.fullPath" />
     </Transition>
   </RouterView>
 </template>

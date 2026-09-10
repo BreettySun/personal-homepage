@@ -10,7 +10,13 @@ export function useParagraphReveal(container: Ref<HTMLElement | undefined>) {
     io = new IntersectionObserver((entries) => {
       for (const en of entries) if (en.isIntersecting) { en.target.classList.add('is-visible'); io?.unobserve(en.target) }
     }, { rootMargin: '0px 0px -8% 0px', threshold: 0.05 })
-    targets.forEach((el) => { el.classList.add('reveal'); io!.observe(el) })
+    targets.forEach((el) => {
+      const r = el.getBoundingClientRect()
+      const inView = r.top < window.innerHeight && r.bottom > 0
+      if (inView) return
+      el.classList.add('reveal')
+      io!.observe(el)
+    })
   })
   onBeforeUnmount(() => io?.disconnect())
 }
