@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useHead } from '@unhead/vue'
 import MetaLine from '@/components/MetaLine.vue'
+import Altitude from '@/components/Altitude.vue'
 import { findEssay, loadEssays } from '@/content/essays'
+import { useParagraphReveal } from '@/composables/useParagraphReveal'
 
 const route = useRoute()
 const essay = computed(() => findEssay(String(route.params.slug)))
@@ -14,18 +16,22 @@ const older = computed(() => (index.value >= 0 && index.value < all.length - 1 ?
 
 useHead({ title: computed(() => (essay.value ? `${essay.value.title} · Scream` : '未找到 · Scream')) })
 
+const body = ref<HTMLElement>()
+useParagraphReveal(body)
+
 function fmt(n: number) { return n.toLocaleString('en-US') }
 </script>
 
 <template>
   <main class="page">
     <article v-if="essay" class="essay">
+      <Altitude />
       <header>
         <MetaLine :parts="[essay.date, essay.city, essay.weather, `${fmt(essay.wordCount)} 字`, `${essay.readingMinutes} min`]" />
         <h1 class="essay-title">{{ essay.title }}</h1>
         <p class="essay-lead">{{ essay.summary }}</p>
       </header>
-      <div class="essay-body" v-html="essay.html" />
+      <div ref="body" class="essay-body" v-html="essay.html" />
       <footer class="essay-footer mono">
         <RouterLink v-if="older" :to="`/essays/${older.slug}`">← {{ older.title }}</RouterLink>
         <span v-else />
