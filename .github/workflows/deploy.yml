@@ -33,6 +33,8 @@ jobs:
           REPO="${GITHUB_REPOSITORY#*/}"
           if [[ "$REPO" == *.github.io ]]; then echo "BASE_PATH=/" >> "$GITHUB_ENV"; else echo "BASE_PATH=/$REPO/" >> "$GITHUB_ENV"; fi
       - run: npm test
+      - run: npx playwright install --with-deps chromium
+      - run: BASE_PATH=/ npm run build && npx playwright test
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with:

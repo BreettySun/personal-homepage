@@ -10,6 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "npm run build && playwright test",
+    "test:e2e:update": "npm run build && playwright test --update-snapshots",
     "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
@@ -23,6 +25,7 @@
     "vue-router": "^5.3.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/markdown-it": "^14.2.0",
     "@types/node": "^22.20.2",
     "@types/three": "^0.185.4",
