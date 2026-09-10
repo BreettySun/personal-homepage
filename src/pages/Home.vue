@@ -39,11 +39,21 @@ async function playIntro() {
   const from = introName.value
   const to = legendEl.value?.$el.querySelector('.legend-name') as HTMLElement | null
   if (!from || !to) { endIntro(); return }
+  gsap.set(from, { xPercent: -50, yPercent: -50 })
   const a = from.getBoundingClientRect(), b = to.getBoundingClientRect()
-  const tl = gsap.timeline({ onComplete() { intro.value = false; from.style.visibility = 'hidden' } })
+  const tl = gsap.timeline({ onComplete() { endIntro(); from.style.visibility = 'hidden' } })
   tl.fromTo(from, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.9, ease: 'power2.out' })
     .to(opacity, { value: 1, duration: 1.2, ease: 'power1.inOut' }, 0.2)
-    .to(from, { x: b.left - a.left, y: b.top - a.top, scale: b.height / a.height, transformOrigin: 'top left', duration: 0.9, ease: 'power3.inOut' }, '+=0.6')
+    .to(from, {
+      x: b.left - (a.left + a.width / 2),
+      y: b.top - (a.top + a.height / 2),
+      xPercent: 0,
+      yPercent: 0,
+      scale: b.height / a.height,
+      transformOrigin: 'top left',
+      duration: 0.9,
+      ease: 'power3.inOut',
+    }, '+=0.6')
 }
 
 onMounted(() => {
@@ -72,7 +82,7 @@ function onSceneReady() { if (intro.value) void playIntro() }
 <style scoped>
 .home { position: fixed; inset: 0; overflow: hidden; background: var(--bg); }
 .fallback { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; color: var(--fg); }
-.intro-name { position: absolute; left: 50%; top: 45%; transform: translate(-50%, -50%); font-size: 96px; font-weight: 600; letter-spacing: .14em; opacity: 0; will-change: transform; }
+.intro-name { position: absolute; left: 50%; top: 45%; font-size: 96px; font-weight: 600; letter-spacing: .14em; opacity: 0; will-change: transform; }
 .hint { position: absolute; right: 24px; bottom: 20px; }
 @media (pointer: coarse) { .hint { display: none; } }
 </style>
