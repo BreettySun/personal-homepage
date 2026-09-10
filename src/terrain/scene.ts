@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import type { Season, WeatherState } from '@/weather/openMeteo'
 import { AMPLITUDE, buildHeightfield, FIELD, heightAt, MARKERS, QUALITY, type HeightfieldSpec, type MarkerId } from './heightfield'
+import { createParticles, particleCount, particleKindFor, type ParticleKind } from './particles'
 
 export interface TerrainColors { line: string; fog: string; accent: string }
 export interface TerrainScene {
@@ -94,6 +95,19 @@ export function createTerrainScene(canvas: HTMLCanvasElement, opts: { seed: numb
   resize()
 
   let weatherTick: ((dt: number) => void) | null = null   // Task 9 挂粒子更新
+  let particles: ReturnType<typeof createParticles> | null = null
+  let currentKind: ParticleKind = 'none'
+  let particleColor = opts.colors.line
+  const bounds = { halfW: FIELD.width / 2, halfD: FIELD.depth / 2, top: 12, floor: -2.5 }
+  function rebuildParticles(kind: ParticleKind, count: number) {
+    particles?.dispose()
+    particles = null
+    weatherTick = null
+    currentKind = kind
+    if (kind === 'none' || count === 0) return
+    particles = createParticles(scene, kind, count, kind === 'leaves' ? opts.colors.accent : particleColor, bounds)
+    weatherTick = dt => particles!.tick(dt)
+  }
   let raf = 0
   let last = performance.now()
   function frame(now: number) {
@@ -116,7 +130,7 @@ export function createTerrainScene(canvas: HTMLCanvasElement, opts: { seed: numb
   }
   raf = requestAnimationFrame(frame)
 
-  const api: TerrainScene & { _setWeatherTick(fn: ((dt: number) => void) | null): void; _scene: THREE.Scene; _spec(): HeightfieldSpec } = {
+  const api: TerrainScene = {
     setSeed(seed) {
       spec = { ...spec, seed }
       lines.geometry.dispose()
@@ -127,10 +141,15 @@ export function createTerrainScene(canvas: HTMLCanvasElement, opts: { seed: numb
       lineMaterial.color.set(c.line)
       ;(scene.fog as THREE.Fog).color.set(c.fog)
       for (const mesh of markerMeshes.values()) (mesh.material as THREE.MeshBasicMaterial).color.set(c.accent)
+      particleColor = c.line
+      particles?.setColor(currentKind === 'leaves' ? c.accent : c.line)
     },
     setAltitude(a) { altitude = Math.max(ALTITUDE.min, Math.min(ALTITUDE.max, a)) },
     setPointer(nx, ny) { pointer.set(nx, ny) },
-    setWeather() { /* Task 9 替换 */ },
+    setWeather(state, season, intensity) {
+      const kind = particleKindFor(state, season)
+      rebuildParticles(kind, particleCount(kind, intensity, opts.quality))
+    },
     pickMarker(nx, ny) {
       raycaster.setFromCamera(new THREE.Vector2(nx, ny), camera)
       const hit = raycaster.intersectObjects([...markerMeshes.values()], false)[0]
@@ -142,6 +161,7 @@ export function createTerrainScene(canvas: HTMLCanvasElement, opts: { seed: numb
       for (const mesh of markerMeshes.values()) (mesh.material as THREE.MeshBasicMaterial).opacity = o
     },
     dispose() {
+      particles?.dispose()
       cancelAnimationFrame(raf)
       ro.disconnect()
       lines.geometry.dispose()
@@ -149,9 +169,6 @@ export function createTerrainScene(canvas: HTMLCanvasElement, opts: { seed: numb
       for (const mesh of markerMeshes.values()) { mesh.geometry.dispose(); (mesh.material as THREE.Material).dispose() }
       renderer.dispose()
     },
-    _setWeatherTick(fn) { weatherTick = fn },
-    _scene: scene,
-    _spec: () => spec,
   }
   return api
 }
