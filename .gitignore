@@ -1,1 +1,7 @@
+node_modules
+dist
+.cache
+public/fonts
 .superpowers
+test-results
+playwright-report
