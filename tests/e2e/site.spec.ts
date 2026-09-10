@@ -63,6 +63,7 @@ test('projects expand inline', async ({ page }) => {
 })
 
 test('visual: essay page', async ({ page }) => {
+  test.skip(!!process.env.CI, 'screenshot baselines are per-platform; the repo only has darwin baselines')
   await page.goto('/essays')
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await expect(page).toHaveScreenshot('essays.png', { maxDiffPixelRatio: 0.02 })
