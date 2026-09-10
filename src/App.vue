@@ -4,7 +4,7 @@ import ThemeToggle from '@/components/ThemeToggle.vue'
 </script>
 
 <template>
-  <header class="site-nav">
+  <header v-if="$route.name !== 'home'" class="site-nav">
     <RouterLink to="/" class="mono">~/</RouterLink>
     <div class="site-nav__right">
       <nav>

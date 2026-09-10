@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import type { Season, WeatherState } from '@/weather/openMeteo'
 import { AMPLITUDE, buildHeightfield, FIELD, heightAt, MARKERS, QUALITY, type HeightfieldSpec, type MarkerId } from './heightfield'
 import { createParticles, particleCount, particleKindFor, type ParticleKind } from './particles'
+import { ALTITUDE } from './camera'
 
 export interface TerrainColors { line: string; fog: string; accent: string }
 export interface TerrainScene {
@@ -15,7 +16,7 @@ export interface TerrainScene {
   setOpacity(o: number): void
   dispose(): void
 }
-export const ALTITUDE = { min: 6, max: 26, initial: 14 }
+export { ALTITUDE }
 
 /** 把高度场变成"每一行一条折线"的线段索引几何。 */
 function buildLineGeometry(spec: HeightfieldSpec): THREE.BufferGeometry {
