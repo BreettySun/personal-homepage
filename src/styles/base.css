@@ -1,30 +1,77 @@
-*, *::before, *::after { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+html {
+	-webkit-text-size-adjust: 100%;
+}
 body {
-  margin: 0;
-  min-height: 100vh;
-  background: var(--bg);
-  color: var(--fg);
-  font-family: var(--font-serif);
-  line-height: 2;
-  transition: background-color .3s ease, color .3s ease;
+	margin: 0;
+	min-height: 100vh;
+	background: var(--bg);
+	color: var(--fg);
+	font-family: var(--font-serif);
+	line-height: 2;
+	transition:
+		background-color 0.3s ease,
+		color 0.3s ease;
 }
-a { color: inherit; text-decoration: none; }
-img { max-width: 100%; display: block; }
-.mono { font-family: var(--font-mono); font-size: 12px; letter-spacing: .02em; color: var(--muted); }
+a {
+	color: inherit;
+	text-decoration: none;
+}
+img {
+	max-width: 100%;
+	display: block;
+}
+.mono {
+	font-family: var(--font-mono);
+	font-size: 12px;
+	letter-spacing: 0.02em;
+	color: var(--muted);
+}
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { transition-duration: 0s !important; animation-duration: 0s !important; }
+	*,
+	*::before,
+	*::after {
+		transition-duration: 0s !important;
+		animation-duration: 0s !important;
+	}
 }
 
-.reveal { opacity: .18; transform: translateY(6px); transition: opacity .7s ease, transform .7s ease; }
-.reveal.is-visible { opacity: 1; transform: none; }
+.reveal {
+	opacity: 0.18;
+	transform: translateY(6px);
+	transition:
+		opacity 0.7s ease,
+		transform 0.7s ease;
+}
+.reveal.is-visible {
+	opacity: 1;
+	transform: none;
+}
 
-.page-enter-active, .page-leave-active { transition: opacity .28s ease; }
-.page-enter-from, .page-leave-to { opacity: 0; }
+.page-enter-active,
+.page-leave-active {
+	transition: opacity 0.28s ease;
+}
+.page-enter-from,
+.page-leave-to {
+	opacity: 0;
+}
 
 @media (max-width: 640px) {
-  .page { padding: 32px 20px 72px; }
-  .essay-title { font-size: 34px; }
-  .essay-body p { font-size: 16px; }
-  .site-nav { padding: 16px 20px; }
+	.page {
+		padding: 32px 20px 72px;
+	}
+	.essay-title {
+		font-size: 34px;
+	}
+	.essay-body p {
+		font-size: 16px;
+	}
+	.site-nav {
+		padding: 16px 20px;
+	}
 }

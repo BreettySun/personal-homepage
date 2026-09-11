@@ -1,27 +1,37 @@
-@font-face { font-family: "Noto Serif SC"; font-weight: 400; font-display: swap; src: url("/fonts/noto-serif-sc-400.woff2") format("woff2"); }
-@font-face { font-family: "Noto Serif SC"; font-weight: 600; font-display: swap; src: url("/fonts/noto-serif-sc-600.woff2") format("woff2"); }
+@font-face {
+	font-family: "Noto Serif SC";
+	font-weight: 400;
+	font-display: swap;
+	src: url("/fonts/noto-serif-sc-400.woff2") format("woff2");
+}
+@font-face {
+	font-family: "Noto Serif SC";
+	font-weight: 600;
+	font-display: swap;
+	src: url("/fonts/noto-serif-sc-600.woff2") format("woff2");
+}
 
 :root {
-  --font-serif: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
-  --font-mono: "JetBrains Mono", "SF Mono", Menlo, monospace;
+	--font-serif: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
+	--font-mono: "JetBrains Mono", "SF Mono", Menlo, monospace;
 
-  /* 宣纸 */
-  --bg: #F3EEE4;
-  --bg-2: #E4DCCB;
-  --fg: #2B2A28;
-  --muted: #5B6B7A;
-  --accent: #B5453C;
-  --line: #d8cfbd;
-  color-scheme: light;
+	/* 宣纸 */
+	--bg: #f3eee4;
+	--bg-2: #e4dccb;
+	--fg: #2b2a28;
+	--muted: #5b6b7a;
+	--accent: #b5453c;
+	--line: #d8cfbd;
+	color-scheme: light;
 }
 
 :root[data-theme="dark"] {
-  /* 雨夜 */
-  --bg: #151A20;
-  --bg-2: #232B34;
-  --fg: #E6E0D4;
-  --muted: #8A97A6;
-  --accent: #D9A441;
-  --line: #2c3540;
-  color-scheme: dark;
+	/* 雨夜 */
+	--bg: #151a20;
+	--bg-2: #232b34;
+	--fg: #e6e0d4;
+	--muted: #8a97a6;
+	--accent: #d9a441;
+	--line: #2c3540;
+	color-scheme: dark;
 }
