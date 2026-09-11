@@ -1,4 +1,4 @@
-# 地形志 TEST
+# 地形志
 
 个人主页。首页是一片按北京实时天气变化的线框地形（Three.js 线段绘制，无 WebGL 或用户要求减少动效时退回静态 SVG），点图例上的三个标记进入文章、项目和关于页；内容页是纸感排版的散文。全站用 Vite + Vue 3 + vue-router，由 vite-ssg 把每个路由（含每篇文章）预渲染成静态 HTML，部署在 GitHub Pages。`content/` 下的 Markdown 在构建时被解析成纯数据，页面和终端都读这一份。
 
