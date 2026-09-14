@@ -56,6 +56,8 @@ summary: 可选，不写就取正文第一句
 
 推到 `main` 由 `.github/workflows/deploy.yml` 自动构建并发布到 GitHub Pages。仓库 Settings → Pages 的 Source 必须选 **GitHub Actions**。`BASE_PATH` 由仓库名推出：`<user>.github.io` 用 `/`，其它仓库用 `/<repo>/`；e2e 那一步单独用 `BASE_PATH=/`，因为它自己起 `vite preview`。
 
+打错的地址由 `dist/404.html` 接住：路由表最后有一条兜底路由指向 `src/pages/NotFound.vue`，构建时预渲染成 `dist/404/index.html`，`postbuild` 再复制成 GitHub Pages 需要的 `dist/404.html`。
+
 ## 测试说明
 
 Playwright 里的视觉快照（`visual: essay page`）只在本地跑：仓库里只有 darwin 基线，CI 上会跳过。移动端项目会跳过终端那条用例（触屏没有键盘快捷键）。

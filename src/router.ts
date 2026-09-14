@@ -6,4 +6,5 @@ export const routes: RouteRecordRaw[] = [
   { path: '/essays/:slug', name: 'essay', component: () => import('./pages/Essay.vue') },
   { path: '/projects', name: 'projects', component: () => import('./pages/ProjectList.vue') },
   { path: '/about', name: 'about', component: () => import('./pages/About.vue') },
+  { path: '/:pathMatch(.*)*', name: 'not-found', component: () => import('./pages/NotFound.vue') },
 ]

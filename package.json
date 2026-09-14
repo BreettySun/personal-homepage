@@ -7,6 +7,7 @@
     "fonts": "node scripts/subset-fonts.mjs",
     "prebuild": "npm run fonts",
     "build": "vite-ssg build",
+    "postbuild": "node -e \"require('fs').copyFileSync('dist/404/index.html','dist/404.html')\"",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",

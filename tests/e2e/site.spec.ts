@@ -78,6 +78,23 @@ test('projects expand inline', async ({ page }) => {
   await expect(page.locator('.proj-detail')).toBeVisible()
 })
 
+test('404.html is prerendered for GitHub Pages (no JS)', async ({ browser }) => {
+  const ctx = await browser.newContext({ javaScriptEnabled: false })
+  const page = await ctx.newPage()
+  await page.goto('/404.html')
+  await expect(page.locator('.nf-meta')).toContainText('404')
+  await expect(page.locator('.nf-links a')).toHaveCount(2)
+  await ctx.close()
+})
+
+test('unknown paths fall through to the not-found page', async ({ page }) => {
+  // vite preview serves index.html for unknown paths (SPA fallback); the client router
+  // must then land on the catch-all route and show the requested path.
+  await page.goto('/this/does/not/exist/')
+  await expect(page.locator('.nf-meta')).toContainText('404')
+  await expect(page.locator('.nf-cmd')).toContainText('/this/does/not/exist')
+})
+
 test('visual: essay page', async ({ page }) => {
   test.skip(!!process.env.CI, 'screenshot baselines are per-platform; the repo only has darwin baselines')
   await page.goto('/essays')
