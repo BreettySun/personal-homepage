@@ -78,6 +78,11 @@ describe('real content', () => {
     expect(list.length).toBeGreaterThan(0)
     for (let i = 1; i < list.length; i++) expect(list[i - 1].date >= list[i].date).toBe(true)
   })
+  it('embeds bundled images from content/images', () => {
+    const essay = loadEssays().find(e => e.slug === '人间四月芳菲尽')
+    expect(essay?.html).toMatch(/<img[^>]+src="[^"]*Cactus\.avif"/)
+    expect(essay?.html).toContain('alt="一盆仙人掌"')
+  })
   it('loads projects and about', () => {
     expect(loadProjects().length).toBeGreaterThan(0)
     expect(loadAbout().links.length).toBe(2)

@@ -20,4 +20,10 @@ describe('markdown helpers', () => {
     expect(firstSentence('我在实习，写前端。\n\n摸鱼的时候会刷到一个问题。')).toBe('我在实习，写前端。')
     expect(firstSentence('没有句号的一段')).toBe('没有句号的一段')
   })
+  it('rewrites content image srcs to bundled asset URLs', () => {
+    const html = renderMarkdown('![一盆仙人掌](../images/Cactus.avif)')
+    expect(html).toContain('alt="一盆仙人掌"')
+    expect(html).toMatch(/src="[^"]*Cactus\.avif"/)
+    expect(html).not.toContain('src="../images/Cactus.avif"')
+  })
 })
