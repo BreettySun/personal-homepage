@@ -24,12 +24,12 @@ useHead({ title: "项目 · Scream" });
 				class="proj-row"
 				:aria-expanded="open === p.slug"
 				@click="toggle(p.slug)">
-				<span class="proj-name"
-					>{{ p.name }}<span class="proj-tagline">{{ p.tagline }}</span></span
-				>
-				<span class="mono proj-meta"
-					>{{ p.stack.join(" ") }} &nbsp; {{ p.year }}</span
-				>
+				<span class="proj-name">
+					{{ p.name }}<span class="proj-tagline">{{ p.tagline }}</span>
+				</span>
+				<span class="mono proj-meta">
+					{{ p.stack.join(" ") }} &nbsp; {{ p.year }}
+				</span>
 			</button>
 			<div
 				v-if="open === p.slug"
@@ -46,16 +46,16 @@ useHead({ title: "项目 · Scream" });
 						v-if="p.github"
 						:href="p.github"
 						target="_blank"
-						rel="noopener"
-						>github ↗</a
-					>
+						rel="noopener">
+						github ↗
+					</a>
 					<a
 						v-if="p.url"
 						:href="p.url"
 						target="_blank"
-						rel="noopener"
-						>live ↗</a
-					>
+						rel="noopener">
+						live ↗
+					</a>
 				</p>
 			</div>
 		</section>

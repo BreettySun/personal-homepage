@@ -16,24 +16,32 @@ onMounted(() => {
 
 <template>
 	<main class="page not-found">
-		<span class="mono nf-cmd">$ cd{{ requested ? " " + requested : "" }}</span>
-		<span class="mono nf-err">cd: no such file or directory</span>
-		<span class="mono nf-meta">// 404 · 这里没有路</span>
-		<p class="nf-links">
-			<RouterLink to="/">回到地图 →</RouterLink>
-			<RouterLink to="/essays">去目录 →</RouterLink>
-		</p>
+		<div class="nf-container">
+			<span class="mono nf-cmd">
+				$ cd{{ requested ? " " + requested : "" }}
+			</span>
+			<span class="mono nf-err">cd: no such file or directory</span>
+			<span class="mono nf-meta">// 404</span>
+			<span class="mono nf-meta">// 生活有时如此荒谬，有时如此真实</span>
+			<p class="nf-links">
+				<RouterLink to="/">回到地图 →</RouterLink>
+			</p>
+		</div>
 	</main>
 </template>
 
 <style scoped>
 .not-found {
-	max-width: 560px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: calc(100vh - 120px);
+}
+.nf-container {
 	display: flex;
 	flex-direction: column;
+	align-items: flex-start;
 	gap: 6px;
-	min-height: 60vh;
-	justify-content: center;
 }
 .nf-err {
 	color: var(--accent);

@@ -65,11 +65,13 @@ describe('Essay', () => {
     expect(footer.text()).toContain('→')
   })
 
-  it('unknown slug shows the 404 line', async () => {
+  it('unknown slug renders the shared not-found page', async () => {
     const { w } = await navigateAndMount('不存在')
 
-    expect(w.text()).toContain('404')
-    expect(w.find('a').attributes('href')).toBe('/essays')
     expect(w.find('.essay').exists()).toBe(false)
+    expect(w.find('.nf-meta').text()).toContain('404')
+    expect(w.find('.nf-cmd').text()).toBe('$ cd /essays/不存在')
+    expect(w.findAll('.nf-links a').map(a => a.attributes('href'))).toEqual(['/', '/essays'])
+    expect(w.findAll('main').length).toBe(1)
   })
 })

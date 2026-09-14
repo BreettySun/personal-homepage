@@ -4,6 +4,7 @@ import { useRoute } from "vue-router";
 import { useHead } from "@unhead/vue";
 import MetaLine from "@/components/MetaLine.vue";
 import Altitude from "@/components/Altitude.vue";
+import NotFound from "@/pages/NotFound.vue";
 import { findEssay, loadEssays } from "@/content/essays";
 import { useParagraphReveal } from "@/composables/useParagraphReveal";
 
@@ -24,7 +25,7 @@ const older = computed(() =>
 
 useHead({
 	title: computed(() =>
-		essay.value ? `${essay.value.title} · Scream` : "未找到 · Scream",
+		essay.value ? `${essay.value.title} · Scream` : "404 · Scream",
 	),
 });
 
@@ -37,10 +38,10 @@ function fmt(n: number) {
 </script>
 
 <template>
-	<main class="page">
-		<article
-			v-if="essay"
-			class="essay">
+	<main
+		v-if="essay"
+		class="page">
+		<article class="essay">
 			<Altitude />
 			<header>
 				<MetaLine
@@ -72,12 +73,8 @@ function fmt(n: number) {
 				>
 			</footer>
 		</article>
-		<p
-			v-else
-			class="mono">
-			// 404 · 这里没有这篇文章 · <RouterLink to="/essays">返回目录</RouterLink>
-		</p>
 	</main>
+	<NotFound v-else />
 </template>
 
 <style scoped>
