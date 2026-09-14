@@ -1,4 +1,7 @@
+import { readdirSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
+
+const essayCount = readdirSync('content/essays').filter(f => f.endsWith('.md')).length
 
 test('home renders legend and entrances', async ({ page }) => {
   await page.goto('/')
@@ -11,7 +14,7 @@ test('home renders legend and entrances', async ({ page }) => {
 test('essay list links to a prerendered essay page', async ({ page }) => {
   await page.goto('/essays')
   const rows = page.locator('.toc-row')
-  await expect(rows).toHaveCount(8)
+  await expect(rows).toHaveCount(essayCount)
   await rows.first().click()
   await expect(page.locator('.essay-body p').first()).toBeVisible()
   await expect(page.locator('.meta-line')).toContainText('//')
@@ -25,7 +28,7 @@ test('essay page is server-rendered (no JS)', async ({ browser }) => {
   // path; the bare `/essays` path (matching the client router) falls through to
   // its SPA fallback (dist/index.html) when there's no client-side JS to route it.
   await page.goto('/essays/')
-  await expect(page.locator('.toc-row')).toHaveCount(8)
+  await expect(page.locator('.toc-row')).toHaveCount(essayCount)
   await ctx.close()
 })
 

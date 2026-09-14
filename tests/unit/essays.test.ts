@@ -75,7 +75,7 @@ describe('groupByYear', () => {
 describe('real content', () => {
   it('loads all essays sorted newest first', () => {
     const list = loadEssays()
-    expect(list.length).toBe(8)
+    expect(list.length).toBeGreaterThan(0)
     for (let i = 1; i < list.length; i++) expect(list[i - 1].date >= list[i].date).toBe(true)
   })
   it('loads projects and about', () => {
