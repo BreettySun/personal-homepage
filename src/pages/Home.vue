@@ -168,6 +168,7 @@ function onSceneFailed() {
 }
 .intro-name {
 	position: absolute;
+	z-index: 2;
 	left: 50%;
 	top: 45%;
 	font-size: 96px;
