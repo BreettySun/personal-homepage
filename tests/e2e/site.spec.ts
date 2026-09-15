@@ -72,6 +72,19 @@ test('terminal opens with ~ and runs ls', async ({ page, isMobile }) => {
   await expect(page.locator('.term')).toHaveCount(0)
 })
 
+test('content pages share the same container on direct entry', async ({ page }) => {
+  // 回归：公共 .page 样式曾写在 EssayList 的 <style> 里，路由懒加载导致直达
+  // /projects 时容器样式缺失。每个页面都是直接 goto，不经过站内跳转。
+  // 比较的是 .page 的内边距：宽度各页可以自己收窄（关于页就是 560px），内边距没人覆盖。
+  const paddings = new Set<string>()
+  for (const path of ['/essays', '/projects', '/about']) {
+    await page.goto(path)
+    paddings.add(await page.locator('main.page').evaluate(el => getComputedStyle(el).paddingBottom))
+  }
+  expect(paddings.size).toBe(1)
+  expect(paddings.has('0px')).toBe(false)
+})
+
 test('projects expand inline', async ({ page }) => {
   await page.goto('/projects')
   await page.locator('.proj-row').first().click()

@@ -28,20 +28,6 @@ useHead({ title: "目录 · Scream" });
 	</main>
 </template>
 
-<style>
-.page {
-	max-width: 720px;
-	margin: 0 auto;
-	padding: 48px 24px 96px;
-}
-.page-title {
-	font-size: 30px;
-	font-weight: 400;
-	letter-spacing: 0.2em;
-	margin: 14px 0 8px;
-}
-</style>
-
 <style scoped>
 .toc-year {
 	margin: 28px 0 6px;

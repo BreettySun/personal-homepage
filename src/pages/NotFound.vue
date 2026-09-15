@@ -23,8 +23,8 @@ onMounted(() => {
 			<span class="mono nf-err">cd: no such file or directory</span>
 			<span class="mono nf-meta">// 404</span>
 			<span class="mono nf-meta">// 生活有时如此荒谬，有时如此真实</span>
-			<p class="nf-links">
-				<RouterLink to="/">回到地图 →</RouterLink>
+			<p class="mono nf-links">
+				<RouterLink to="/">cd /home</RouterLink>
 			</p>
 		</div>
 	</main>
@@ -53,7 +53,7 @@ onMounted(() => {
 	display: flex;
 	gap: 28px;
 	margin-top: 40px;
-	font-size: 17px;
+	font-size: 14px;
 	letter-spacing: 0.06em;
 }
 .nf-links a:hover {
