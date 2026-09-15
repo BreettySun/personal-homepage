@@ -1,7 +1,36 @@
 import { describe, expect, it } from 'vitest'
-import { buildHeightfield, heightAt, makeHeightFn, MARKERS } from '@/terrain/heightfield'
+import { buildHeightfield, heightAt, makeHeightFn, MARKERS, ROW_JITTER, rowLevel, rowZ } from '@/terrain/heightfield'
 
 const spec = { cols: 40, rows: 30, width: 40, depth: 30, amplitude: 2, seed: 0x5c7e }
+
+describe('rowZ', () => {
+  const spacing = spec.depth / (spec.rows - 1)
+  it('is deterministic per seed and keeps the two edge rows exactly on the boundary', () => {
+    const a = rowZ(spec), b = rowZ(spec), c = rowZ({ ...spec, seed: 1 })
+    expect(Array.from(a)).toEqual(Array.from(b))
+    expect(Array.from(a)).not.toEqual(Array.from(c))
+    expect(a[0]).toBe(-spec.depth / 2)
+    expect(a[spec.rows - 1]).toBe(spec.depth / 2)
+  })
+  it('jitters every inner row by at most half of ROW_JITTER × spacing and never reorders rows', () => {
+    const zs = rowZ(spec)
+    let jittered = 0
+    for (let r = 1; r < spec.rows - 1; r++) {
+      const base = -spec.depth / 2 + r * spacing
+      const off = Math.abs(zs[r] - base)
+      expect(off).toBeLessThanOrEqual((ROW_JITTER / 2) * spacing + 1e-9)
+      if (off > 1e-6) jittered++
+      expect(zs[r]).toBeGreaterThan(zs[r - 1])
+    }
+    expect(jittered).toBeGreaterThan(spec.rows / 2)
+  })
+})
+
+describe('rowLevel', () => {
+  it('keeps every 4th row, drops odd rows first, then the remaining even rows', () => {
+    expect([0, 1, 2, 3, 4, 5, 6, 7].map(rowLevel)).toEqual([0, 1, 2, 1, 0, 1, 2, 1])
+  })
+})
 
 describe('makeHeightFn', () => {
   it('is deterministic for a seed and different across seeds', () => {
@@ -35,7 +64,7 @@ describe('heightAt', () => {
     const h = buildHeightfield(spec)
     const col = 10, row = 7
     const x = -spec.width / 2 + (col / (spec.cols - 1)) * spec.width
-    const z = -spec.depth / 2 + (row / (spec.rows - 1)) * spec.depth
+    const z = rowZ(spec)[row] // 行的 z 带抖动，高度也是在抖动后的 z 上采样的
     expect(heightAt(spec, x, z)).toBeCloseTo(h[row * spec.cols + col], 6)
   })
 })

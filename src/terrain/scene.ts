@@ -7,6 +7,8 @@ import {
 	heightAt,
 	MARKERS,
 	QUALITY,
+	rowLevel,
+	rowZ,
 	type HeightfieldSpec,
 	type MarkerId,
 } from "./heightfield";
@@ -42,14 +44,17 @@ export { ALTITUDE };
 /** 把高度场变成"每一行一条折线"的线段索引几何。 */
 function buildLineGeometry(spec: HeightfieldSpec): THREE.BufferGeometry {
 	const heights = buildHeightfield(spec);
+	const zs = rowZ(spec); // 行距带抖动，见 heightfield.ts ROW_JITTER
 	const positions = new Float32Array(spec.cols * spec.rows * 3);
+	const levels = new Float32Array(spec.cols * spec.rows); // 每个顶点所在行的抽稀等级
 	for (let r = 0; r < spec.rows; r++) {
-		const z = -spec.depth / 2 + (r / (spec.rows - 1)) * spec.depth;
+		const level = rowLevel(r);
 		for (let c = 0; c < spec.cols; c++) {
 			const i = r * spec.cols + c;
 			positions[i * 3] = -spec.width / 2 + (c / (spec.cols - 1)) * spec.width;
 			positions[i * 3 + 1] = heights[i];
-			positions[i * 3 + 2] = z;
+			positions[i * 3 + 2] = zs[r];
+			levels[i] = level;
 		}
 	}
 	const index: number[] = [];
@@ -61,8 +66,51 @@ function buildLineGeometry(spec: HeightfieldSpec): THREE.BufferGeometry {
 	}
 	const geo = new THREE.BufferGeometry();
 	geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+	geo.setAttribute("aLevel", new THREE.BufferAttribute(levels, 1));
 	geo.setIndex(index);
 	return geo;
+}
+
+/**
+ * 远处抽行的视深阈值（场景单位），按 800px 高的视口、120 行标定：
+ * 等级 1 的行在 [l1a, l1b] 之间淡出，等级 2 的行在 [l2a, l2b] 之间淡出。
+ * 投影后的行距 ∝ 视口高度 / 视深，所以实际阈值随视口高度和行数线性缩放。
+ */
+const THIN_DEPTH = { l1a: 22, l1b: 32, l2a: 34, l2b: 46 };
+const THIN_REF = { height: 800, rows: QUALITY.high.rows };
+
+/**
+ * 给 LineBasicMaterial 注入按视深抽行的逻辑：远处的行密度超过像素能分辨的程度就会
+ * 出摩尔纹，MSAA 救不了；只能像 mipmap 一样在远处把奇数行淡掉、再淡掉 1/4 行。
+ * uThin 是 vec4(l1a, l1b, l2a, l2b)。
+ */
+function installRowThinning(material: THREE.LineBasicMaterial, uThin: THREE.IUniform<THREE.Vector4>) {
+	material.onBeforeCompile = (shader) => {
+		shader.uniforms.uThin = uThin;
+		shader.vertexShader = shader.vertexShader
+			.replace(
+				"#include <common>",
+				"#include <common>\nattribute float aLevel;\nvarying float vLevel;\nvarying float vDepth;",
+			)
+			.replace(
+				"#include <fog_vertex>",
+				"#include <fog_vertex>\nvLevel = aLevel;\nvDepth = -mvPosition.z;",
+			);
+		shader.fragmentShader = shader.fragmentShader
+			.replace(
+				"#include <common>",
+				"#include <common>\nuniform vec4 uThin;\nvarying float vLevel;\nvarying float vDepth;",
+			)
+			.replace(
+				"vec4 diffuseColor = vec4( diffuse, opacity );",
+				[
+					"vec4 diffuseColor = vec4( diffuse, opacity );",
+					"float thin = vLevel > 1.5 ? smoothstep( uThin.z, uThin.w, vDepth )",
+					"  : vLevel > 0.5 ? smoothstep( uThin.x, uThin.y, vDepth ) : 0.0;",
+					"diffuseColor.a *= 1.0 - thin;",
+				].join("\n"),
+			);
+	};
 }
 
 export function createTerrainScene(
@@ -120,6 +168,14 @@ export function createTerrainScene(
 		transparent: true,
 		opacity: 1,
 	});
+	const uThin: THREE.IUniform<THREE.Vector4> = {
+		value: new THREE.Vector4(THIN_DEPTH.l1a, THIN_DEPTH.l1b, THIN_DEPTH.l2a, THIN_DEPTH.l2b),
+	};
+	installRowThinning(lineMaterial, uThin);
+	function updateThinning(viewportHeight: number) {
+		const k = Math.max(0.6, Math.min(1.6, viewportHeight / THIN_REF.height)) * (spec.rows / THIN_REF.rows);
+		uThin.value.set(THIN_DEPTH.l1a * k, THIN_DEPTH.l1b * k, THIN_DEPTH.l2a * k, THIN_DEPTH.l2b * k);
+	}
 	let lines = new THREE.LineSegments(buildLineGeometry(spec), lineMaterial);
 	scene.add(lines);
 
@@ -159,6 +215,7 @@ export function createTerrainScene(
 		renderer.setSize(w, h, false);
 		camera.aspect = w / h;
 		camera.updateProjectionMatrix();
+		updateThinning(h);
 	}
 	const ro = new ResizeObserver(resize);
 	ro.observe(canvas);
