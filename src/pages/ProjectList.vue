@@ -91,7 +91,7 @@ useHead({ title: "项目 · Scream" });
 	color: var(--accent);
 }
 .proj-detail {
-	padding: 12px 0 24px 12px;
+	padding: 12px 0 2px 12px;
 	border-left: 2px solid var(--accent);
 	margin: 8px 0 16px;
 }
