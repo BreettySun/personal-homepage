@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildHeightfield, heightAt, makeHeightFn, MARKERS, ROW_JITTER, rowLevel, rowZ } from '@/terrain/heightfield'
+import { buildHeightfield, heightAt, makeHeightFn, MARKERS, ROW_JITTER, rowLevel, rowsFor, rowZ } from '@/terrain/heightfield'
 
 const spec = { cols: 40, rows: 30, width: 40, depth: 30, amplitude: 2, seed: 0x5c7e }
 
@@ -23,6 +23,15 @@ describe('rowZ', () => {
       expect(zs[r]).toBeGreaterThan(zs[r - 1])
     }
     expect(jittered).toBeGreaterThan(spec.rows / 2)
+  })
+})
+
+describe('rowsFor', () => {
+  it('scales the base row count and never goes below 16', () => {
+    expect(rowsFor(120, 1)).toBe(120)
+    expect(rowsFor(120, 0.5)).toBe(60)
+    expect(rowsFor(120, 1.6)).toBe(192)
+    expect(rowsFor(60, 0.1)).toBe(16)
   })
 })
 

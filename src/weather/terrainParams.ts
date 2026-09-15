@@ -2,11 +2,14 @@ import { readonly, ref } from 'vue'
 import { defaultWeatherFor, fetchBeijingWeather, seasonOf, type LiveWeather, type Season, type WeatherState } from './openMeteo'
 
 export type ParamSource = 'live' | 'default' | 'manual'
-export interface TerrainParams { weather: WeatherState; season: Season; seed: number; intensity: number; source: ParamSource }
-type ManualPatch = Partial<Pick<TerrainParams, 'weather' | 'season' | 'seed' | 'intensity'>>
+/** density 是地形线条疏密的倍率（1 = 默认行数），范围见 DENSITY。 */
+export interface TerrainParams { weather: WeatherState; season: Season; seed: number; intensity: number; density: number; source: ParamSource }
+type ManualPatch = Partial<Pick<TerrainParams, 'weather' | 'season' | 'seed' | 'intensity' | 'density'>>
 
 export const DEFAULT_SEED = 0x5c7e
 export const DEFAULT_INTENSITY = 0.6
+export const DEFAULT_DENSITY = 1
+export const DENSITY = { min: 0.4, max: 1.6, step: 0.1 }
 const STORAGE_KEY = 'terrain.override'
 const WEATHERS: WeatherState[] = ['clear', 'cloudy', 'rain', 'snow']
 const SEASONS: Season[] = ['spring', 'summer', 'autumn', 'winter']
@@ -21,12 +24,13 @@ export function readOverride(storage: Pick<Storage, 'getItem'>): ManualPatch | n
   if (SEASONS.includes(o.season as Season)) out.season = o.season as Season
   if (Number.isInteger(o.seed)) out.seed = o.seed as number
   if (typeof o.intensity === 'number' && o.intensity >= 0 && o.intensity <= 1) out.intensity = o.intensity
+  if (typeof o.density === 'number' && o.density >= DENSITY.min && o.density <= DENSITY.max) out.density = o.density
   return Object.keys(out).length ? out : null
 }
 
 export function initialParams(now: Date, override: ManualPatch | null): TerrainParams {
   const season = seasonOf(now)
-  const base: TerrainParams = { weather: defaultWeatherFor(season), season, seed: DEFAULT_SEED, intensity: DEFAULT_INTENSITY, source: 'default' }
+  const base: TerrainParams = { weather: defaultWeatherFor(season), season, seed: DEFAULT_SEED, intensity: DEFAULT_INTENSITY, density: DEFAULT_DENSITY, source: 'default' }
   return override ? { ...base, ...override, source: 'manual' } : base
 }
 

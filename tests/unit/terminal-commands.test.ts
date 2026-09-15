@@ -23,6 +23,7 @@ function makeCtx(): TerminalContext {
 			season: "autumn",
 			seed: 0x5c7e,
 			intensity: 0.6,
+			density: 1,
 			source: "live",
 		},
 	};

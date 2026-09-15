@@ -18,7 +18,7 @@ vi.mock('@/terrain/scene', () => ({
   createTerrainScene: () => {
     if (scene.throws) throw new Error('WebGL context creation failed')
     return {
-      setSeed() {}, setColors() {}, setAltitude() {}, setPointer() {},
+      setSeed() {}, setDensity() {}, setColors() {}, setAltitude() {}, setPointer() {},
       setWeather() {}, pickMarker: () => null, setHovered() {}, setOpacity() {}, dispose() {},
     }
   },

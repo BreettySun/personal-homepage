@@ -7,7 +7,7 @@ const ctx = {
   essays: [{ slug: '丘陵', title: '丘陵' }, { slug: '河流', title: '河流' }, { slug: '湖泊', title: '湖泊' }],
   projects: [],
   navigate() {}, setTheme() {}, setManual() {}, close() {},
-  params: { weather: 'rain', season: 'autumn', seed: 1, intensity: 0.6, source: 'live' },
+  params: { weather: 'rain', season: 'autumn', seed: 1, intensity: 0.6, density: 1, source: 'live' },
 } as unknown as TerminalContext
 
 describe('parseCommand', () => {

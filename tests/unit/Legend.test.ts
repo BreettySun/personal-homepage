@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { nextTick } from 'vue'
 import Legend from '@/components/Legend.vue'
 
-const params = { weather: 'rain', season: 'autumn', seed: 0x5c7e, intensity: 0.6, source: 'live' } as const
+const params = { weather: 'rain', season: 'autumn', seed: 0x5c7e, intensity: 0.6, density: 1, source: 'live' } as const
 
 describe('Legend', () => {
   it('shows the three entrances and emits navigate', async () => {

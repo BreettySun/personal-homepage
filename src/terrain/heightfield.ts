@@ -18,6 +18,11 @@ export const QUALITY = {
 };
 export const AMPLITUDE = 2.2;
 
+/** 按疏密倍率算行数：density 1 = 该质量档的默认行数；下限 16 行，再少就不是地形了。 */
+export function rowsFor(baseRows: number, density: number): number {
+	return Math.max(16, Math.round(baseRows * density));
+}
+
 /** 三个入口在地形上的位置（世界坐标 x, z）。 */
 export const MARKERS: { id: MarkerId; x: number; z: number }[] = [
 	{ id: "essays", x: -6, z: 2 },

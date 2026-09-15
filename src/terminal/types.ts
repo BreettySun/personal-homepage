@@ -9,7 +9,7 @@ export interface TerminalContext {
   navigate(path: string): void
   setTheme(t: Theme): void
   params: TerrainParams
-  setManual(patch: Partial<Pick<TerrainParams, 'weather' | 'season' | 'seed' | 'intensity'>>): void
+  setManual(patch: Partial<Pick<TerrainParams, 'weather' | 'season' | 'seed' | 'intensity' | 'density'>>): void
   close(): void
 }
 export interface Command {

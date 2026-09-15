@@ -8,6 +8,7 @@ import {
 	MARKERS,
 	QUALITY,
 	rowLevel,
+	rowsFor,
 	rowZ,
 	type HeightfieldSpec,
 	type MarkerId,
@@ -30,6 +31,8 @@ export interface TerrainColors {
 }
 export interface TerrainScene {
 	setSeed(seed: number): void;
+	/** 线条疏密倍率（1 = 默认行数），重建几何。 */
+	setDensity(density: number): void;
 	setColors(c: TerrainColors): void;
 	setAltitude(a: number): void;
 	setPointer(nx: number, ny: number): void;
@@ -172,8 +175,11 @@ export function createTerrainScene(
 		value: new THREE.Vector4(THIN_DEPTH.l1a, THIN_DEPTH.l1b, THIN_DEPTH.l2a, THIN_DEPTH.l2b),
 	};
 	installRowThinning(lineMaterial, uThin);
+	let viewportH = THIN_REF.height;
 	function updateThinning(viewportHeight: number) {
-		const k = Math.max(0.6, Math.min(1.6, viewportHeight / THIN_REF.height)) * (spec.rows / THIN_REF.rows);
+		viewportH = viewportHeight;
+		// 投影行距 ∝ 视口高度 / (行数 × 视深)，所以阈值 ∝ 视口高度 / 行数：行越少，越晚开始抽。
+		const k = Math.max(0.6, Math.min(1.6, viewportHeight / THIN_REF.height)) * (THIN_REF.rows / spec.rows);
 		uThin.value.set(THIN_DEPTH.l1a * k, THIN_DEPTH.l1b * k, THIN_DEPTH.l2a * k, THIN_DEPTH.l2b * k);
 	}
 	let lines = new THREE.LineSegments(buildLineGeometry(spec), lineMaterial);
@@ -288,6 +294,15 @@ export function createTerrainScene(
 			lines.geometry.dispose();
 			lines.geometry = buildLineGeometry(spec);
 			placeMarkers();
+		},
+		setDensity(density) {
+			const rows = rowsFor(QUALITY[opts.quality].rows, density);
+			if (rows === spec.rows) return;
+			spec = { ...spec, rows };
+			lines.geometry.dispose();
+			lines.geometry = buildLineGeometry(spec);
+			// 抽行阈值随行数反比缩放：行少了间距本来就大，远处不用再抽那么早。
+			updateThinning(viewportH);
 		},
 		setColors(c) {
 			colors = c;

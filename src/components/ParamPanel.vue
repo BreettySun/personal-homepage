@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useTerrainParams } from "@/weather/terrainParams";
+import { DENSITY, useTerrainParams } from "@/weather/terrainParams";
 import type { Season, WeatherState } from "@/weather/openMeteo";
 
 const { params, setManual, clearManual } = useTerrainParams();
@@ -68,6 +68,22 @@ function hex(n: number) {
 			<b>{{ params.intensity.toFixed(2) }}</b>
 		</div>
 		<div class="row">
+			<span>density</span>
+			<input
+				type="range"
+				:min="DENSITY.min"
+				:max="DENSITY.max"
+				:step="DENSITY.step"
+				:value="params.density"
+				aria-label="地形线条疏密"
+				@input="
+					setManual({
+						density: Number(($event.target as HTMLInputElement).value),
+					})
+				" />
+			<b>×{{ params.density.toFixed(1) }}</b>
+		</div>
+		<div class="row">
 			<span>seed</span
 			><button
 				type="button"
@@ -130,7 +146,7 @@ button.link {
 	padding: 0;
 }
 input[type="range"] {
-	width: 80px;
+	width: 116px;
 	accent-color: var(--accent);
 }
 b {

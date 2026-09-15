@@ -66,6 +66,7 @@ onMounted(async () => {
 			params.value.season,
 			params.value.intensity,
 		);
+		sceneApi.setDensity(params.value.density);
 		sceneApi.setOpacity(props.opacity);
 		emit("ready");
 	} catch (err) {
@@ -78,6 +79,10 @@ onMounted(async () => {
 watch(
 	() => params.value.seed,
 	(s) => sceneApi?.setSeed(s),
+);
+watch(
+	() => params.value.density,
+	(d) => sceneApi?.setDensity(d),
 );
 watch(
 	() =>
