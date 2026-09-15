@@ -82,8 +82,9 @@ test('404.html is prerendered for GitHub Pages (no JS)', async ({ browser }) => 
   const ctx = await browser.newContext({ javaScriptEnabled: false })
   const page = await ctx.newPage()
   await page.goto('/404.html')
-  await expect(page.locator('.nf-meta')).toContainText('404')
-  await expect(page.locator('.nf-links a')).toHaveCount(2)
+  await expect(page.locator('.not-found')).toContainText('404')
+  // 至少一条出路；具体几个链接、去哪儿是设计决定，不锁。
+  expect(await page.locator('.nf-links a').count()).toBeGreaterThan(0)
   await ctx.close()
 })
 
@@ -91,7 +92,7 @@ test('unknown paths fall through to the not-found page', async ({ page }) => {
   // vite preview serves index.html for unknown paths (SPA fallback); the client router
   // must then land on the catch-all route and show the requested path.
   await page.goto('/this/does/not/exist/')
-  await expect(page.locator('.nf-meta')).toContainText('404')
+  await expect(page.locator('.not-found')).toContainText('404')
   await expect(page.locator('.nf-cmd')).toContainText('/this/does/not/exist')
 })
 

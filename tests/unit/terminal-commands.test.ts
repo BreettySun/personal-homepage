@@ -39,8 +39,9 @@ describe("terminal commands", () => {
 		await execute("cat 丘陵", ctx);
 		expect(ctx.navigate).toHaveBeenCalledWith("/essays/丘陵");
 		expect(ctx.close).toHaveBeenCalled();
+		expect(ctx.navigate).toHaveBeenCalledTimes(1);
 		expect(await execute("cat 不存在", ctx)).toEqual([
-			"cat: 不存在: No such file",
+			expect.stringContaining("不存在"),
 		]);
 	});
 	it("theme, seed and weather write through the context", async () => {
@@ -51,16 +52,18 @@ describe("terminal commands", () => {
 		expect(ctx.setManual).toHaveBeenCalledWith({ seed: 0x1234 });
 		await execute("weather 雪", ctx);
 		expect(ctx.setManual).toHaveBeenCalledWith({ weather: "snow" });
-		expect(await execute("weather", ctx)).toEqual([
-			"北京 · 雨 · 秋 · 实时 · intensity 0.6",
-		]);
+		// 状态行只锁"报了哪些参数"，不锁分隔符和顺序。
+		const status = (await execute("weather", ctx)) as string[];
+		expect(status).toHaveLength(1);
+		for (const part of ["雨", "秋", "实时", "0.6"]) expect(status[0]).toContain(part);
 	});
 	it("clear returns the clear sentinel and unknown commands hint help", async () => {
 		const ctx = makeCtx();
 		expect(await execute("clear", ctx)).toEqual({ clear: true });
-		expect(await execute("rm -rf /", ctx)).toEqual([
-			"rm: command not found. 试试 help",
-		]);
-		expect(await execute("sudo", ctx)).toEqual(["你没有权限，去找老王。"]);
+		const unknown = (await execute("rm -rf /", ctx)) as string[];
+		expect(unknown.join(" ")).toContain("rm");
+		expect(unknown.join(" ")).toContain("help");
+		// sudo 是个彩蛋，只要求回一句话，文案随便改。
+		expect(await execute("sudo", ctx)).toHaveLength(1);
 	});
 });

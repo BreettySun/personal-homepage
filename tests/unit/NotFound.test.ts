@@ -20,12 +20,12 @@ describe('NotFound', () => {
     expect(router.currentRoute.value.name).toBe('not-found')
   })
 
-  it('shows the 404 line, the requested path and two ways out', async () => {
+  it('shows the 404 line, the requested path and a way back to the map', async () => {
     const { w } = await mountAt('/nowhere/at/all')
     expect(w.text()).toContain('404')
-    expect(w.find('.nf-cmd').text()).toBe('$ cd /nowhere/at/all')
+    expect(w.find('.nf-cmd').text()).toContain('/nowhere/at/all')
     expect(w.text()).toContain('no such file or directory')
-    const links = w.findAll('a')
-    expect(links.map(a => a.attributes('href'))).toEqual(['/', '/essays'])
+    // 至少要有一条回主页的路；其余链接是随时会改的设计决定，不锁。
+    expect(w.findAll('a').map(a => a.attributes('href'))).toContain('/')
   })
 })

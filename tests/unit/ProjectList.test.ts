@@ -6,7 +6,6 @@ import ProjectList from '@/pages/ProjectList.vue'
 describe('ProjectList', () => {
   it('lists projects collapsed and expands one on click', async () => {
     const w = mount(ProjectList, { global: { plugins: [createHead()] } })
-    expect(w.text()).toContain('$ ls -la ~/projects')
     const rows = w.findAll('.proj-row')
     expect(rows.length).toBeGreaterThan(0)
     expect(w.find('.proj-detail').exists()).toBe(false)

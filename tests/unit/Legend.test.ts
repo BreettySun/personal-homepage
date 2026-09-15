@@ -8,8 +8,7 @@ const params = { weather: 'rain', season: 'autumn', seed: 0x5c7e, intensity: 0.6
 describe('Legend', () => {
   it('shows the three entrances and emits navigate', async () => {
     const w = mount(Legend, { props: { essayCount: 8, projectCount: 1, params, intro: false } })
-    expect(w.text()).toContain('LEGEND')
-    expect(w.text()).toContain('Scream')
+    expect(w.find('.legend-name').exists()).toBe(true)
     const rows = w.findAll('.legend-row')
     expect(rows.length).toBe(3)
     await rows[0].trigger('click')

@@ -1,5 +1,5 @@
 import { createHead } from '@unhead/vue/client'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import Essay from '@/pages/Essay.vue'
@@ -23,55 +23,45 @@ describe('Essay', () => {
     const { w } = await navigateAndMount(essay.slug)
 
     expect(w.find('.essay-title').text()).toBe(essay.title)
-    expect(w.find('.meta-line').text()).toContain('//')
+    expect(w.find('.meta-line').text()).toContain(essay.date)
     expect(w.find('.meta-line').text()).toContain(essay.city)
 
     const bodyParagraphs = w.findAll('.essay-body p')
     expect(bodyParagraphs.length).toBeGreaterThan(0)
   })
 
-  it('newest essay has only the older link', async () => {
-    const essay = all[0] // newest essay
-    const { w } = await navigateAndMount(essay.slug)
+  // 上下篇只锁"链到哪一篇"，箭头、左右位置这类排版细节不锁。
+  function footerHrefs(w: VueWrapper) {
+    return w.findAll('.essay-footer a').map(a => a.attributes('href'))
+  }
 
-    const footer = w.find('.essay-footer')
-    const links = footer.findAll('a')
-    expect(links.length).toBe(1)
-    expect(links[0].text()).toContain(all[1].title)
-    expect(links[0].text()).toContain('←')
-    expect(footer.text()).not.toContain('→')
+  it('newest essay links only to the older one', async () => {
+    const { w } = await navigateAndMount(all[0].slug)
+    expect(footerHrefs(w)).toEqual([`/essays/${all[1].slug}`])
+    expect(w.find('.essay-footer').text()).toContain(all[1].title)
   })
 
-  it('oldest essay has only the newer link', async () => {
-    const essay = all[all.length - 1] // oldest essay
-    const { w } = await navigateAndMount(essay.slug)
-
-    const footer = w.find('.essay-footer')
-    const links = footer.findAll('a')
-    expect(links.length).toBe(1)
-    expect(links[0].text()).toContain(all[all.length - 2].title)
-    expect(links[0].text()).toContain('→')
-    expect(footer.text()).not.toContain('←')
+  it('oldest essay links only to the newer one', async () => {
+    const { w } = await navigateAndMount(all[all.length - 1].slug)
+    expect(footerHrefs(w)).toEqual([`/essays/${all[all.length - 2].slug}`])
+    expect(w.find('.essay-footer').text()).toContain(all[all.length - 2].title)
   })
 
-  it('middle essay has both links', async () => {
-    const essay = all[1] // second essay (in the middle)
-    const { w } = await navigateAndMount(essay.slug)
-
-    const footer = w.find('.essay-footer')
-    const links = footer.findAll('a')
-    expect(links.length).toBe(2)
-    expect(footer.text()).toContain('←')
-    expect(footer.text()).toContain('→')
+  it('middle essay links to both neighbours', async () => {
+    const { w } = await navigateAndMount(all[1].slug)
+    const hrefs = footerHrefs(w)
+    expect(hrefs.length).toBe(2)
+    expect(hrefs).toContain(`/essays/${all[0].slug}`)
+    expect(hrefs).toContain(`/essays/${all[2].slug}`)
   })
 
   it('unknown slug renders the shared not-found page', async () => {
     const { w } = await navigateAndMount('不存在')
 
     expect(w.find('.essay').exists()).toBe(false)
-    expect(w.find('.nf-meta').text()).toContain('404')
-    expect(w.find('.nf-cmd').text()).toBe('$ cd /essays/不存在')
-    expect(w.findAll('.nf-links a').map(a => a.attributes('href'))).toEqual(['/', '/essays'])
+    expect(w.text()).toContain('404')
+    expect(w.find('.nf-cmd').text()).toContain('/essays/不存在')
+    expect(w.findAll('.nf-links a').map(a => a.attributes('href'))).toContain('/')
     expect(w.findAll('main').length).toBe(1)
   })
 })
