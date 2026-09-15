@@ -27,6 +27,7 @@ function readColors() {
 		line: s.getPropertyValue("--fg").trim(),
 		fog: s.getPropertyValue("--bg").trim(),
 		accent: s.getPropertyValue("--accent").trim(),
+		muted: s.getPropertyValue("--muted").trim(),
 	};
 }
 
