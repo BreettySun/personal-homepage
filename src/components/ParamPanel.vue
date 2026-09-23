@@ -145,6 +145,10 @@ button.link {
 	border: 0;
 	padding: 0;
 }
+/* 选项按钮之间只隔 4px，焦点描边收紧，免得压到旁边的按钮。 */
+.opts button:focus-visible {
+	outline-offset: 1px;
+}
 input[type="range"] {
 	width: 116px;
 	accent-color: var(--accent);

@@ -63,12 +63,14 @@ useHead({ title: "项目 · Scream" });
 </template>
 
 <style scoped>
+/* 放不下时技术栈整行落到名字下面，而不是把标语和技术栈各自折成两半（窄屏） */
 .proj-row {
 	width: 100%;
 	display: flex;
+	flex-wrap: wrap;
 	justify-content: space-between;
 	align-items: baseline;
-	gap: 16px;
+	gap: 0 16px;
 	padding: 14px 0;
 	background: none;
 	border: 0;
@@ -99,8 +101,12 @@ useHead({ title: "项目 · Scream" });
 	font-size: 15px;
 	line-height: 1.9;
 	margin: 0 0 12px;
+	text-wrap: pretty;
 }
 .proj-detail a {
 	margin-right: 16px;
+}
+.proj-detail a:hover {
+	color: var(--accent);
 }
 </style>

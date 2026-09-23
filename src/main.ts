@@ -2,13 +2,13 @@ import '@fontsource/jetbrains-mono/400.css'
 import { ViteSSG } from 'vite-ssg'
 import App from './App.vue'
 import { loadEssays } from './content/essays'
-import { routes } from './router'
+import { routes, scrollBehavior } from './router'
 import './styles/tokens.css'
 import './styles/base.css'
 
 export const createApp = ViteSSG(
   App,
-  { routes, base: import.meta.env.BASE_URL },
+  { routes, base: import.meta.env.BASE_URL, scrollBehavior },
 )
 
 export async function includedRoutes(paths: string[]) {

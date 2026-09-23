@@ -10,6 +10,8 @@ const props = defineProps<{
 	projectCount: number;
 	params: TerrainParams;
 	intro: boolean;
+	/** 地图上正被指着的标记：对应的行跟着高亮，地图和图例互相指认。 */
+	hovered?: MarkerId | null;
 }>();
 const emit = defineEmits<{
 	navigate: [id: MarkerId];
@@ -60,6 +62,7 @@ function count(id: MarkerId) {
 				:key="r.id"
 				type="button"
 				class="legend-row"
+				:class="{ 'is-hover': hovered === r.id }"
 				@click="emit('navigate', r.id)"
 				@mouseenter="emit('hover', r.id)"
 				@mouseleave="emit('hover', null)">
@@ -134,7 +137,8 @@ function count(id: MarkerId) {
 	text-align: left;
 	cursor: pointer;
 }
-.legend-row:hover {
+.legend-row:hover,
+.legend-row.is-hover {
 	color: var(--accent);
 }
 .glyph[data-id="essays"] {

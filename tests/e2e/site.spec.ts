@@ -11,6 +11,31 @@ test('home renders legend and entrances', async ({ page }) => {
   await expect(page).toHaveURL(/\/essays$/)
 })
 
+test('home paints the static terrain before any JS runs', async ({ browser }) => {
+  // 预渲染的首页 HTML 里就有静态地形，首帧不是一片空白；实时场景建好之后才换掉它。
+  const ctx = await browser.newContext({ javaScriptEnabled: false })
+  const page = await ctx.newPage()
+  await page.goto('/')
+  await expect(page.locator('.fallback')).toBeVisible()
+  await ctx.close()
+})
+
+test('reduced motion keeps the static terrain instead of WebGL', async ({ browser }) => {
+  const ctx = await browser.newContext({ reducedMotion: 'reduce' })
+  const page = await ctx.newPage()
+  await page.goto('/')
+  await expect(page.locator('.legend')).toBeVisible()
+  await expect(page.locator('.fallback')).toBeVisible()
+  await expect(page.locator('canvas')).toHaveCount(0)
+  // 静态地形是一张遮罩图，颜色取主题色；确认遮罩真的指向生成的地形图
+  const mask = await page.locator('.fallback').evaluate(el => {
+    const s = getComputedStyle(el)
+    return s.maskImage || s.getPropertyValue('-webkit-mask-image')
+  })
+  expect(mask).toContain('terrain-fallback')
+  await ctx.close()
+})
+
 test('essay list links to a prerendered essay page', async ({ page }) => {
   await page.goto('/essays')
   const rows = page.locator('.toc-row')
@@ -50,6 +75,8 @@ test('theme toggle flips data-theme and persists', async ({ page }) => {
   const html = page.locator('html')
   const before = await html.getAttribute('data-theme')
   await page.locator('.theme-toggle').click()
+  // 主题切换走 View Transition，新主题在更新回调里才落到 <html> 上，比 click() 晚一帧
+  await expect(html).not.toHaveAttribute('data-theme', before!)
   const after = await html.getAttribute('data-theme')
   expect(after).not.toBe(before)
   await page.reload()

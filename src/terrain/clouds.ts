@@ -9,6 +9,11 @@ export const CLOUD_COUNT = 6;
 /** 云层高度：要压在地形最高点（AMPLITUDE 2.2）之上、相机最低高度（ALTITUDE.min 6）之下。 */
 export const CLOUD_HEIGHT = { min: 3.2, max: 4.2 };
 
+/** 云的最大不透明度（阴天、intensity = 1），云影强度按它归一化。 */
+const MAX_CLOUD_OPACITY = 0.65;
+/** 云影在地面上的半径占云尺寸的比例：贴图边缘是透明的，影子比云略小。 */
+const SHADOW_EXTENT = 0.42;
+
 /** 阴天才有云，intensity 越大越浓；其他天气为 0，场景里会缓动淡出。 */
 export function cloudOpacityFor(
 	state: WeatherState,
@@ -16,7 +21,7 @@ export function cloudOpacityFor(
 ): number {
 	if (state !== "cloudy") return 0;
 	const k = Math.max(0, Math.min(1, intensity));
-	return 0.3 + 0.35 * k;
+	return 0.3 + (MAX_CLOUD_OPACITY - 0.3) * k;
 }
 
 export interface Cloud {
@@ -134,6 +139,33 @@ export function createClouds(
 				stepCloud(clouds[i], dt, bounds.halfW, bounds.halfD, Math.random);
 				place(i);
 			}
+		},
+		/**
+		 * 每片云沿光线方向投到地面（y = 0）上的影子：中心 x, z 与半宽、半深。
+		 * 没有云时把影子挪到很远的地方，着色器里自然为 0。
+		 */
+		shadows(
+			out: THREE.Vector4[],
+			light: { x: number; y: number; z: number },
+		) {
+			for (let i = 0; i < out.length; i++) {
+				const c = clouds[i];
+				if (!c || !group.visible) {
+					out[i].set(1e4, 1e4, 1, 1);
+					continue;
+				}
+				const t = c.y / light.y;
+				out[i].set(
+					c.x - light.x * t,
+					c.z - light.z * t,
+					c.w * SHADOW_EXTENT,
+					c.d * SHADOW_EXTENT,
+				);
+			}
+		},
+		/** 云影强度 0..1：跟着云的浓淡缓动，开场淡入时一起淡入。 */
+		shadowStrength() {
+			return Math.min(1, eased / MAX_CLOUD_OPACITY) * base;
 		},
 		setWeatherOpacity(o: number) {
 			weatherOpacity = o;

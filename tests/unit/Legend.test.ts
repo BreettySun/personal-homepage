@@ -26,6 +26,11 @@ describe('Legend', () => {
     const beijingToday = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Shanghai' }).format(new Date())
     expect(w.find('.meta-line').text()).toContain(beijingToday)
   })
+  it('highlights the row of the marker pointed at on the map', () => {
+    const w = mount(Legend, { props: { essayCount: 8, projectCount: 1, params, intro: false, hovered: 'projects' } })
+    const rows = w.findAll('.legend-row')
+    expect(rows.map(r => r.classes('is-hover'))).toEqual([false, true, false])
+  })
   it('hides the name while the intro is playing', () => {
     const w = mount(Legend, { props: { essayCount: 8, projectCount: 1, params, intro: true } })
     expect(w.find('.legend-name').attributes('style')).toContain('visibility: hidden')

@@ -19,3 +19,15 @@ describe('normalizedPointer', () => {
     expect(normalizedPointer({ clientX: 100, clientY: 150 }, rect)).toEqual({ nx: -1, ny: -1 })
   })
 })
+
+describe('cameraDrift', () => {
+  it('starts from rest so the first live frame matches the static fallback, and stays small', async () => {
+    const { cameraDrift, DRIFT } = await import('@/terrain/camera')
+    expect(cameraDrift(0)).toEqual({ x: 0, y: 0 })
+    for (let t = 0; t < 200; t += 3.7) {
+      const d = cameraDrift(t)
+      expect(Math.abs(d.x)).toBeLessThanOrEqual(DRIFT.x)
+      expect(Math.abs(d.y)).toBeLessThanOrEqual(DRIFT.y)
+    }
+  })
+})

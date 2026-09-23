@@ -32,3 +32,11 @@ describe('complete', () => {
     expect(complete('ls e', commands, ctx)).toEqual(['ls essays'])
   })
 })
+
+describe('displayWidth', () => {
+  it('counts CJK characters as two monospace cells', async () => {
+    const { displayWidth } = await import('@/terminal/parse')
+    expect(displayWidth('help')).toBe(4)
+    expect(displayWidth('cat <文章>')).toBe(10)
+  })
+})

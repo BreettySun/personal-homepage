@@ -3,9 +3,9 @@ import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { loadEssays } from '@/content/essays'
 import { loadProjects } from '@/content/projects'
-import { useTheme } from '@/theme/theme'
+import { switchTheme } from '@/theme/transition'
 import { useTerrainParams } from '@/weather/terrainParams'
-import { complete } from './parse'
+import { complete, displayWidth } from './parse'
 import { commands, execute } from './registry'
 import type { TerminalContext } from './types'
 
@@ -16,16 +16,19 @@ const history: string[] = []
 let historyIndex = -1
 const inputEl = ref<HTMLInputElement>()
 const bodyEl = ref<HTMLElement>()
+// help 的用法和说明之间是制表符（见 commands/help.ts）：制表位放在最长的用法后面再留三格。
+// 不能从 commands/help.ts 引入：它和 registry 是刻意的循环引用，必须先加载 registry。
+const tabSize = Math.max(...commands.map(c => displayWidth(c.usage))) + 3
 
 const router = useRouter()
-const { setTheme } = useTheme()
 const { params, setManual } = useTerrainParams()
 
 function ctx(): TerminalContext {
   return {
     essays: loadEssays(), projects: loadProjects(),
     navigate: p => { void router.push(p) },
-    setTheme, params: params.value, setManual,
+    // 终端里没有点击位置：墨迹从视口中心晕开（面板本身固定深色，不跟主题变）
+    setTheme: t => switchTheme(t), params: params.value, setManual,
     close: () => { open.value = false },
   }
 }
@@ -78,7 +81,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKey))
 <template>
   <Transition name="term">
     <section v-if="open" class="term mono" role="dialog" aria-label="terminal">
-      <div ref="bodyEl" class="term-body" @click="inputEl?.focus()">
+      <div ref="bodyEl" class="term-body" :style="{ tabSize }" @click="inputEl?.focus()">
         <div v-for="(l, i) in lines" :key="i" class="term-line">{{ l }}</div>
         <div class="term-prompt">$ <input ref="inputEl" v-model="input" type="text" spellcheck="false" autocomplete="off" @keydown="onKey" @keydown.enter="submit"></div>
       </div>

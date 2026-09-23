@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { FALL_SPEED, RAIN_DRIFT, particleCount, particleKindFor, stepParticle } from '@/terrain/particles'
+import { vi } from 'vitest'
 
 describe('particleKindFor', () => {
   it('follows weather first, then autumn leaves', () => {
@@ -40,6 +41,21 @@ describe('stepParticle', () => {
     stepParticle('rain', p, 0, 0.1, 0, bounds)
     expect(p[1]).toBeGreaterThan(bounds.floor)
     expect(p[1]).toBeLessThanOrEqual(bounds.top)
+  })
+  it('lands rain on the ground it is given: reports the impact point, then recycles to the top', () => {
+    const p = new Float32Array([1, 0.05, 2])
+    const onLand = vi.fn()
+    stepParticle('rain', p, 0, 0.1, 0, bounds, () => 0, onLand)
+    expect(onLand).toHaveBeenCalledTimes(1)
+    const [x, y, z] = onLand.mock.calls[0]
+    expect(y).toBe(0)
+    expect(Math.abs(x - 1)).toBeLessThan(0.5)
+    expect(Math.abs(z - 2)).toBeLessThan(1.5)
+    expect(p[1]).toBeGreaterThan(bounds.top - 2.01)
+    // 还在半空的雨滴不算落地
+    const q = new Float32Array([0, 8, 0])
+    stepParticle('rain', q, 0, 0.1, 0, bounds, () => 0, onLand)
+    expect(onLand).toHaveBeenCalledTimes(1)
   })
   it('rain is faster than snow but slow enough to be seen', () => {
     // 可见区高约 14.5 个单位：一滴雨从顶落到底至少要有 1 秒。

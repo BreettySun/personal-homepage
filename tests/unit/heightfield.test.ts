@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { buildHeightfield, heightAt, makeHeightFn, MARKERS, ROW_JITTER, rowLevel, rowsFor, rowZ } from '@/terrain/heightfield'
+import {
+  buildHeightfield, edgeFade, FIELD, heightAt, makeHeightFn, MARKER_IDS, MARKER_LAYOUT, markerLayoutFor,
+  ROW_JITTER, rowLevel, rowsFor, rowZ, thinningThresholds,
+} from '@/terrain/heightfield'
 
 const spec = { cols: 40, rows: 30, width: 40, depth: 30, amplitude: 2, seed: 0x5c7e }
 
@@ -78,12 +81,46 @@ describe('heightAt', () => {
   })
 })
 
-describe('MARKERS', () => {
-  it('has the three entrances inside the field', () => {
-    expect(MARKERS.map(m => m.id)).toEqual(['essays', 'projects', 'about'])
-    for (const m of MARKERS) {
-      expect(Math.abs(m.x)).toBeLessThan(20)
-      expect(Math.abs(m.z)).toBeLessThan(15)
+describe('marker layouts', () => {
+  it('place the three entrances well inside the field, clear of the faded edges', () => {
+    for (const layout of Object.values(MARKER_LAYOUT)) {
+      expect(Object.keys(layout).sort()).toEqual([...MARKER_IDS].sort())
+      for (const id of MARKER_IDS) expect(edgeFade(layout[id].x, layout[id].z)).toBeGreaterThan(0.99)
     }
+  })
+  it('switch between the landscape and portrait layouts by aspect ratio', () => {
+    expect(markerLayoutFor(1280 / 800)).toBe(MARKER_LAYOUT.wide)
+    expect(markerLayoutFor(390 / 844)).toBe(MARKER_LAYOUT.tall)
+  })
+})
+
+describe('edgeFade', () => {
+  it('is 1 in the middle, 0 on the boundary and rises monotonically inward', () => {
+    expect(edgeFade(0, 0)).toBe(1)
+    expect(edgeFade(FIELD.width / 2, 0)).toBe(0)
+    expect(edgeFade(0, -FIELD.depth / 2)).toBe(0)
+    expect(edgeFade(0, FIELD.depth / 2)).toBe(0)
+    let prev = 0
+    for (let x = FIELD.width / 2; x >= 0; x -= 0.5) {
+      const v = edgeFade(x, 0)
+      expect(v).toBeGreaterThanOrEqual(prev)
+      prev = v
+    }
+  })
+})
+
+describe('thinningThresholds', () => {
+  it('start thinning later with fewer rows or a taller viewport', () => {
+    const base = thinningThresholds(800, 120)
+    const sparse = thinningThresholds(800, 60)
+    const tall = thinningThresholds(1200, 120)
+    for (let i = 0; i < 4; i++) {
+      expect(sparse[i]).toBeGreaterThan(base[i])
+      expect(tall[i]).toBeGreaterThan(base[i])
+    }
+    // 等级 1 先于等级 2 淡出，每段都是从近到远
+    expect(base[0]).toBeLessThan(base[1])
+    expect(base[1]).toBeLessThanOrEqual(base[2])
+    expect(base[2]).toBeLessThan(base[3])
   })
 })

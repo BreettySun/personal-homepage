@@ -22,6 +22,12 @@
 	--muted: #5b6b7a;
 	--accent: #b5453c;
 	--line: #d8cfbd;
+	/*
+	 * 纸纹：200px 平铺的 SVG。feTurbulence 出细噪声（stitchTiles 让四边无缝），
+	 * feColorMatrix 把 RGB 定成暖墨色、alpha 取噪声 R 通道的高段（6R − 3.6，只有约两成像素出点），
+	 * 再整体压到 5%：稀疏成簇的深色纤维点，而不是满屏的颗粒。设为 none 即完全关闭。
+	 */
+	--paper: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='p' x='0' y='0' width='100%25' height='100%25' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .17 0 0 0 0 .15 0 0 0 0 .12 6 0 0 0 -3.6'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)' opacity='.05'/%3E%3C/svg%3E");
 	color-scheme: light;
 }
 
@@ -33,5 +39,7 @@
 	--muted: #8a97a6;
 	--accent: #d9a441;
 	--line: #2c3540;
+	/* 同一张噪声，点换成近 --fg 的浅色，压到 3.5%：暗底上亮点比暗点显眼，所以更淡。 */
+	--paper: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='p' x='0' y='0' width='100%25' height='100%25' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .9 0 0 0 0 .88 0 0 0 0 .83 6 0 0 0 -3.6'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)' opacity='.035'/%3E%3C/svg%3E");
 	color-scheme: dark;
 }

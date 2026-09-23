@@ -88,18 +88,23 @@ function fmt(n: number) {
 	letter-spacing: 0.1em;
 	margin: 16px 0 10px;
 	line-height: 1.3;
+	text-wrap: balance;
 }
 .essay-lead {
 	font-size: 14px;
 	color: var(--muted);
 	margin: 0 0 30px;
 	line-height: 1.8;
+	text-wrap: pretty;
 }
+/* pretty：段末不留单独一个字加标点；allow-end：行末的逗号句号放不下时悬挂到版心外（仅 Safari）。 */
 .essay-body :deep(p) {
 	font-size: 17px;
 	line-height: 2.1;
 	margin: 0 0 18px;
 	text-align: justify;
+	text-wrap: pretty;
+	hanging-punctuation: allow-end;
 }
 .essay-body :deep(img) {
 	margin: 24px auto;
@@ -110,5 +115,8 @@ function fmt(n: number) {
 	margin-top: 64px;
 	padding: 16px 0;
 	border-top: 1px solid var(--bg-2);
+}
+.essay-footer a:hover {
+	color: var(--accent);
 }
 </style>

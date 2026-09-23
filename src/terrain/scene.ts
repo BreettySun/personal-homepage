@@ -4,12 +4,14 @@ import {
 	AMPLITUDE,
 	buildHeightfield,
 	FIELD,
-	heightAt,
-	MARKERS,
+	makeHeightFn,
+	MARKER_IDS,
 	QUALITY,
 	rowLevel,
 	rowsFor,
 	rowZ,
+	thinningThresholds,
+	THIN_REF,
 	type HeightfieldSpec,
 	type MarkerId,
 } from "./heightfield";
@@ -21,7 +23,15 @@ import {
 } from "./particles";
 import { atmosphereFor, type Atmosphere } from "./atmosphere";
 import { cloudOpacityFor, createClouds } from "./clouds";
-import { ALTITUDE } from "./camera";
+import { ALTITUDE, CAMERA, cameraDrift, cameraPose } from "./camera";
+import { LIGHT, vertexShade } from "./lighting";
+import { createMarkers } from "./markers";
+import {
+	advanceRipple,
+	createLineMaterial,
+	createOccluderMaterial,
+	createTerrainUniforms,
+} from "./terrainShader";
 
 export interface TerrainColors {
 	line: string;
@@ -39,81 +49,71 @@ export interface TerrainScene {
 	setWeather(state: WeatherState, season: Season, intensity: number): void;
 	pickMarker(nx: number, ny: number): MarkerId | null;
 	setHovered(id: MarkerId | null): void;
+	/** 开场进度 0..1：线条从画面中间往外铺开，标记、云、粒子跟着淡入。 */
 	setOpacity(o: number): void;
 	dispose(): void;
 }
 export { ALTITUDE };
 
-/** 把高度场变成"每一行一条折线"的线段索引几何。 */
-function buildLineGeometry(spec: HeightfieldSpec): THREE.BufferGeometry {
+/** 三个标记的涟漪错开起步（一圈的比例），不会同时"呼吸"。 */
+const RIPPLE_PHASE: Record<MarkerId, number> = {
+	essays: 0,
+	projects: 0.35,
+	about: 0.68,
+};
+
+/**
+ * 把高度场变成两份共用顶点的几何：
+ * lines 是"每一行一条折线"的线段索引，surface 是同一网格的三角面（遮挡用）。
+ * 顶点属性：position、aLevel（所在行的抽稀等级）、aShade（晕渲的受光偏差）。
+ */
+function buildTerrainGeometry(spec: HeightfieldSpec) {
 	const heights = buildHeightfield(spec);
 	const zs = rowZ(spec); // 行距带抖动，见 heightfield.ts ROW_JITTER
-	const positions = new Float32Array(spec.cols * spec.rows * 3);
-	const levels = new Float32Array(spec.cols * spec.rows); // 每个顶点所在行的抽稀等级
-	for (let r = 0; r < spec.rows; r++) {
+	const { cols, rows } = spec;
+	const positions = new Float32Array(cols * rows * 3);
+	const levels = new Float32Array(cols * rows);
+	for (let r = 0; r < rows; r++) {
 		const level = rowLevel(r);
-		for (let c = 0; c < spec.cols; c++) {
-			const i = r * spec.cols + c;
-			positions[i * 3] = -spec.width / 2 + (c / (spec.cols - 1)) * spec.width;
+		for (let c = 0; c < cols; c++) {
+			const i = r * cols + c;
+			positions[i * 3] = -spec.width / 2 + (c / (cols - 1)) * spec.width;
 			positions[i * 3 + 1] = heights[i];
 			positions[i * 3 + 2] = zs[r];
 			levels[i] = level;
 		}
 	}
-	const index: number[] = [];
-	for (let r = 0; r < spec.rows; r++) {
-		for (let c = 0; c < spec.cols - 1; c++) {
-			const i = r * spec.cols + c;
-			index.push(i, i + 1);
+	const attributes = {
+		position: new THREE.BufferAttribute(positions, 3),
+		aLevel: new THREE.BufferAttribute(levels, 1),
+		aShade: new THREE.BufferAttribute(
+			vertexShade(heights, cols, rows, spec.width, zs),
+			1,
+		),
+	};
+	const lineIndex: number[] = [];
+	const triIndex: number[] = [];
+	for (let r = 0; r < rows; r++) {
+		for (let c = 0; c < cols - 1; c++) {
+			const i = r * cols + c;
+			lineIndex.push(i, i + 1);
+			if (r < rows - 1) triIndex.push(i, i + cols, i + 1, i + 1, i + cols, i + cols + 1);
 		}
 	}
-	const geo = new THREE.BufferGeometry();
-	geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-	geo.setAttribute("aLevel", new THREE.BufferAttribute(levels, 1));
-	geo.setIndex(index);
-	return geo;
+	const lines = new THREE.BufferGeometry();
+	const surface = new THREE.BufferGeometry();
+	for (const [name, attr] of Object.entries(attributes)) {
+		lines.setAttribute(name, attr);
+		surface.setAttribute(name, attr);
+	}
+	lines.setIndex(lineIndex);
+	surface.setIndex(triIndex);
+	return { lines, surface };
 }
 
-/**
- * 远处抽行的视深阈值（场景单位），按 800px 高的视口、120 行标定：
- * 等级 1 的行在 [l1a, l1b] 之间淡出，等级 2 的行在 [l2a, l2b] 之间淡出。
- * 投影后的行距 ∝ 视口高度 / 视深，所以实际阈值随视口高度和行数线性缩放。
- */
-const THIN_DEPTH = { l1a: 22, l1b: 32, l2a: 34, l2b: 46 };
-const THIN_REF = { height: 800, rows: QUALITY.high.rows };
-
-/**
- * 给 LineBasicMaterial 注入按视深抽行的逻辑：远处的行密度超过像素能分辨的程度就会
- * 出摩尔纹，MSAA 救不了；只能像 mipmap 一样在远处把奇数行淡掉、再淡掉 1/4 行。
- * uThin 是 vec4(l1a, l1b, l2a, l2b)。
- */
-function installRowThinning(material: THREE.LineBasicMaterial, uThin: THREE.IUniform<THREE.Vector4>) {
-	material.onBeforeCompile = (shader) => {
-		shader.uniforms.uThin = uThin;
-		shader.vertexShader = shader.vertexShader
-			.replace(
-				"#include <common>",
-				"#include <common>\nattribute float aLevel;\nvarying float vLevel;\nvarying float vDepth;",
-			)
-			.replace(
-				"#include <fog_vertex>",
-				"#include <fog_vertex>\nvLevel = aLevel;\nvDepth = -mvPosition.z;",
-			);
-		shader.fragmentShader = shader.fragmentShader
-			.replace(
-				"#include <common>",
-				"#include <common>\nuniform vec4 uThin;\nvarying float vLevel;\nvarying float vDepth;",
-			)
-			.replace(
-				"vec4 diffuseColor = vec4( diffuse, opacity );",
-				[
-					"vec4 diffuseColor = vec4( diffuse, opacity );",
-					"float thin = vLevel > 1.5 ? smoothstep( uThin.z, uThin.w, vDepth )",
-					"  : vLevel > 0.5 ? smoothstep( uThin.x, uThin.y, vDepth ) : 0.0;",
-					"diffuseColor.a *= 1.0 - thin;",
-				].join("\n"),
-			);
-	};
+function luminance(hex: string): number {
+	const c = new THREE.Color(hex);
+	return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
 }
 
 export function createTerrainScene(
@@ -140,7 +140,7 @@ export function createTerrainScene(
 	scene.fog = fog;
 	const fogTarget = new THREE.Color(colors.fog);
 	let atmoOpacity = atmo.lineOpacity; // 缓动中的天气系数
-	let lineOpacityBase = 1; // setOpacity（开场淡入）给的基准
+	let lightLines = false; // 线比底色亮（雨夜）
 	function fogColorFor(a: Atmosphere) {
 		return new THREE.Color(colors.fog).lerp(
 			new THREE.Color(colors.muted),
@@ -155,7 +155,12 @@ export function createTerrainScene(
 		);
 	}
 
-	const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 200);
+	const camera = new THREE.PerspectiveCamera(
+		CAMERA.fov,
+		1,
+		CAMERA.near,
+		CAMERA.far,
+	);
 	let altitude = ALTITUDE.initial;
 	const pointer = new THREE.Vector2(0, 0);
 	const pointerSmoothed = new THREE.Vector2(0, 0);
@@ -166,70 +171,76 @@ export function createTerrainScene(
 		amplitude: AMPLITUDE,
 		seed: opts.seed,
 	};
-	const lineMaterial = new THREE.LineBasicMaterial({
-		color: new THREE.Color(opts.colors.line),
-		transparent: true,
-		opacity: 1,
-	});
-	const uThin: THREE.IUniform<THREE.Vector4> = {
-		value: new THREE.Vector4(THIN_DEPTH.l1a, THIN_DEPTH.l1b, THIN_DEPTH.l2a, THIN_DEPTH.l2b),
-	};
-	installRowThinning(lineMaterial, uThin);
+	const uniforms = createTerrainUniforms();
+	const lineMaterial = createLineMaterial(opts.colors.line, uniforms);
+	const occluderMaterial = createOccluderMaterial(uniforms);
 	let viewportH = THIN_REF.height;
+	let aspect = 1;
 	function updateThinning(viewportHeight: number) {
 		viewportH = viewportHeight;
-		// 投影行距 ∝ 视口高度 / (行数 × 视深)，所以阈值 ∝ 视口高度 / 行数：行越少，越晚开始抽。
-		const k = Math.max(0.6, Math.min(1.6, viewportHeight / THIN_REF.height)) * (THIN_REF.rows / spec.rows);
-		uThin.value.set(THIN_DEPTH.l1a * k, THIN_DEPTH.l1b * k, THIN_DEPTH.l2a * k, THIN_DEPTH.l2b * k);
+		uniforms.uThin.value.set(...thinningThresholds(viewportHeight, spec.rows));
 	}
-	let lines = new THREE.LineSegments(buildLineGeometry(spec), lineMaterial);
-	scene.add(lines);
+	const geo = buildTerrainGeometry(spec);
+	const lines = new THREE.LineSegments(geo.lines, lineMaterial);
+	const surface = new THREE.Mesh(geo.surface, occluderMaterial);
+	surface.renderOrder = -1; // 先写深度，再画线
+	scene.add(surface, lines);
+	function rebuildGeometry() {
+		const next = buildTerrainGeometry(spec);
+		lines.geometry.dispose();
+		surface.geometry.dispose();
+		lines.geometry = next.lines;
+		surface.geometry = next.surface;
+	}
 
-	// 标记点：小球 + 立柱
-	const markerGroup = new THREE.Group();
-	const markerMat = new THREE.MeshBasicMaterial({
-		color: new THREE.Color(opts.colors.accent),
-		transparent: true,
+	const markers = createMarkers(scene, {
+		accent: colors.accent,
+		muted: colors.muted,
+		line: colors.line,
+		halo: colors.fog,
 	});
-	const markerMeshes = new Map<MarkerId, THREE.Mesh>();
-	for (const m of MARKERS) {
-		const mesh = new THREE.Mesh(
-			new THREE.SphereGeometry(0.18, 16, 16),
-			markerMat.clone(),
-		);
-		mesh.userData.id = m.id;
-		markerGroup.add(mesh);
-		markerMeshes.set(m.id, mesh);
-	}
-	scene.add(markerGroup);
-	function placeMarkers() {
-		for (const m of MARKERS) {
-			const mesh = markerMeshes.get(m.id)!;
-			mesh.position.set(m.x, heightAt(spec, m.x, m.z) + 0.35, m.z);
-			mesh.userData.baseY = mesh.position.y;
-		}
-	}
-	placeMarkers();
-
 	let hovered: MarkerId | null = null;
-	const raycaster = new THREE.Raycaster();
+	const rippleCycle = MARKER_IDS.map((id) => RIPPLE_PHASE[id]);
+
+	function applyColors(c: TerrainColors) {
+		lightLines = luminance(c.line) > luminance(c.fog);
+		lineMaterial.color.set(c.line);
+		uniforms.uInk.value.y = lightLines ? 1 : 0;
+		uniforms.uAccent.value.set(c.accent);
+		uniforms.uShadeColor.value.set(c.muted);
+		// 云影的淡墨：宣纸上是一层冷灰，雨夜里是更深的底色
+		uniforms.uWashColor.value = lightLines
+			? new THREE.Color(c.fog).multiplyScalar(0.35)
+			: new THREE.Color(c.muted);
+		markers.setColors({
+			accent: c.accent,
+			muted: c.muted,
+			line: c.line,
+			halo: c.fog,
+		});
+	}
+	applyColors(colors);
 
 	function resize() {
 		const w = canvas.clientWidth,
 			h = canvas.clientHeight;
 		if (w === 0 || h === 0) return;
 		renderer.setSize(w, h, false);
-		camera.aspect = w / h;
+		aspect = w / h;
+		camera.aspect = aspect;
 		camera.updateProjectionMatrix();
 		updateThinning(h);
+		markers.setViewport(w, h, camera.projectionMatrix.elements[5]);
+		markers.layout(spec, aspect);
 	}
 	const ro = new ResizeObserver(resize);
 	ro.observe(canvas);
 	resize();
 
-	let weatherTick: ((dt: number) => void) | null = null; // Task 9 挂粒子更新
+	let weatherTick: ((dt: number) => void) | null = null;
 	let particles: ReturnType<typeof createParticles> | null = null;
 	let currentKind: ParticleKind = "none";
+	let baseOpacity = 1; // setOpacity（开场）给的基准
 	const bounds = {
 		halfW: FIELD.width / 2,
 		halfD: FIELD.depth / 2,
@@ -237,13 +248,15 @@ export function createTerrainScene(
 		floor: -2.5,
 	};
 	const clouds = createClouds(scene, cloudColor(), bounds);
-	/** 落叶用强调色，柳絮用 muted 的浅色，雨雪跟线条同色。 */
+	// 雨滴落地判定用的地面高度；换种子时换函数，粒子拿的是这个闭包。
+	let heightFn = makeHeightFn(spec.seed);
+	const ground = (x: number, z: number) => heightFn(x, z) * spec.amplitude;
+	/** 落叶用强调色，柳絮用 muted；雪在雨夜是亮白、在宣纸上是逆光的冷灰；雨跟线条同色。 */
 	function particleColorFor(kind: ParticleKind) {
-		return kind === "leaves"
-			? colors.accent
-			: kind === "catkins"
-				? colors.muted
-				: colors.line;
+		if (kind === "leaves") return colors.accent;
+		if (kind === "catkins") return colors.muted;
+		if (kind === "snow") return lightLines ? colors.line : colors.muted;
+		return colors.line;
 	}
 	function rebuildParticles(kind: ParticleKind, count: number) {
 		particles?.dispose();
@@ -257,32 +270,42 @@ export function createTerrainScene(
 			count,
 			particleColorFor(kind),
 			bounds,
+			ground,
 		);
+		particles.setBaseOpacity(baseOpacity);
 		weatherTick = (dt) => particles!.tick(dt);
 	}
 	let raf = 0;
 	let last = performance.now();
+	let clock = 0; // 场景时间（秒），驱动镜头漂移
 	function frame(now: number) {
 		const dt = Math.min(0.05, (now - last) / 1000);
 		last = now;
 		pointerSmoothed.lerp(pointer, 0.06);
-		// 相机：高度 altitude，向 -z 方向后退，看向原点略前方；鼠标带来左右/俯仰漂移
-		camera.position.set(pointerSmoothed.x * 1.6, altitude, altitude * 0.9 + 4);
-		camera.lookAt(pointerSmoothed.x * 0.8, -0.5 + pointerSmoothed.y * 0.6, -2);
-		for (const mesh of markerMeshes.values()) {
-			const isHover = mesh.userData.id === hovered;
-			const targetY = mesh.userData.baseY + (isHover ? 0.6 : 0);
-			mesh.position.y += (targetY - mesh.position.y) * 0.15;
-			const s = isHover ? 1.6 : 1;
-			mesh.scale.setScalar(mesh.scale.x + (s - mesh.scale.x) * 0.15);
-		}
+		clock += dt;
+		const drift = cameraDrift(clock);
+		const pose = cameraPose(
+			altitude,
+			pointerSmoothed.x + drift.x,
+			pointerSmoothed.y + drift.y,
+		);
+		camera.position.set(pose.position.x, pose.position.y, pose.position.z);
+		camera.lookAt(pose.target.x, pose.target.y, pose.target.z);
+		markers.tick(hovered);
+		MARKER_IDS.forEach((id, i) => {
+			const g = markers.ground(id);
+			rippleCycle[i] = advanceRipple(rippleCycle[i], dt, g.hover);
+			uniforms.uMarkers.value[i].set(g.x, g.z, rippleCycle[i], g.hover);
+		});
 		weatherTick?.(dt);
 		clouds.tick(dt);
+		clouds.shadows(uniforms.uClouds.value, LIGHT);
+		uniforms.uCloudShadow.value = clouds.shadowStrength();
 		fog.near += (atmo.fogNear - fog.near) * 0.03;
 		fog.far += (atmo.fogFar - fog.far) * 0.03;
 		fog.color.lerp(fogTarget, 0.03);
 		atmoOpacity += (atmo.lineOpacity - atmoOpacity) * 0.04;
-		lineMaterial.opacity = lineOpacityBase * atmoOpacity;
+		lineMaterial.opacity = atmoOpacity;
 		renderer.render(scene, camera);
 		raf = requestAnimationFrame(frame);
 	}
@@ -291,28 +314,25 @@ export function createTerrainScene(
 	const api: TerrainScene = {
 		setSeed(seed) {
 			spec = { ...spec, seed };
-			lines.geometry.dispose();
-			lines.geometry = buildLineGeometry(spec);
-			placeMarkers();
+			heightFn = makeHeightFn(seed);
+			rebuildGeometry();
+			markers.layout(spec, aspect);
 		},
 		setDensity(density) {
 			const rows = rowsFor(QUALITY[opts.quality].rows, density);
 			if (rows === spec.rows) return;
 			spec = { ...spec, rows };
-			lines.geometry.dispose();
-			lines.geometry = buildLineGeometry(spec);
+			rebuildGeometry();
 			// 抽行阈值随行数反比缩放：行少了间距本来就大，远处不用再抽那么早。
 			updateThinning(viewportH);
 		},
 		setColors(c) {
 			colors = c;
-			lineMaterial.color.set(c.line);
+			applyColors(c);
 			// 主题切换跟着 CSS 一起立刻换色，不缓动。
 			fogTarget.copy(fogColorFor(atmo));
 			fog.color.copy(fogTarget);
 			clouds.setColor(cloudColor());
-			for (const mesh of markerMeshes.values())
-				(mesh.material as THREE.MeshBasicMaterial).color.set(c.accent);
 			particles?.setColor(particleColorFor(currentKind));
 		},
 		setAltitude(a) {
@@ -329,34 +349,28 @@ export function createTerrainScene(
 			rebuildParticles(kind, particleCount(kind, intensity, opts.quality));
 		},
 		pickMarker(nx, ny) {
-			raycaster.setFromCamera(new THREE.Vector2(nx, ny), camera);
-			const hit = raycaster.intersectObjects(
-				[...markerMeshes.values()],
-				false,
-			)[0];
-			return hit ? (hit.object.userData.id as MarkerId) : null;
+			return markers.pick(nx, ny, camera);
 		},
 		setHovered(id) {
 			hovered = id;
 		},
 		setOpacity(o) {
-			lineOpacityBase = o;
-			lineMaterial.opacity = o * atmoOpacity;
+			baseOpacity = o;
+			uniforms.uReveal.value = o;
 			clouds.setBaseOpacity(o);
-			for (const mesh of markerMeshes.values())
-				(mesh.material as THREE.MeshBasicMaterial).opacity = o;
+			markers.setOpacity(o);
+			particles?.setBaseOpacity(o);
 		},
 		dispose() {
 			particles?.dispose();
 			clouds.dispose();
+			markers.dispose();
 			cancelAnimationFrame(raf);
 			ro.disconnect();
 			lines.geometry.dispose();
+			surface.geometry.dispose();
 			lineMaterial.dispose();
-			for (const mesh of markerMeshes.values()) {
-				mesh.geometry.dispose();
-				(mesh.material as THREE.Material).dispose();
-			}
+			occluderMaterial.dispose();
 			renderer.dispose();
 		},
 	};

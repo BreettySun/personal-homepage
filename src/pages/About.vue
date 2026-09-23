@@ -38,6 +38,7 @@ useHead({ title: "whoami · Scream" });
 	font-size: 17px;
 	line-height: 2.1;
 	margin: 0 0 18px;
+	text-wrap: pretty;
 }
 .about-links {
 	margin-top: 48px;

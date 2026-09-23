@@ -9,10 +9,13 @@ html {
 body {
 	margin: 0;
 	min-height: 100vh;
-	background: var(--bg);
+	background-color: var(--bg);
+	background-image: var(--paper);
 	color: var(--fg);
 	font-family: var(--font-serif);
 	line-height: 2;
+	/* 中文与西文、数字之间自动留出细空（"有了Ai之后"、"2025要过去了"），不支持的浏览器照旧。 */
+	text-autospace: normal;
 	transition:
 		background-color 0.3s ease,
 		color 0.3s ease;
@@ -20,6 +23,32 @@ body {
 a {
 	color: inherit;
 	text-decoration: none;
+}
+::selection {
+	background: color-mix(in srgb, var(--accent) 24%, transparent);
+}
+/* 键盘焦点统一一圈细的强调色描边；:focus-visible 不会在鼠标点击时出现。 */
+:focus-visible {
+	outline: 1px solid var(--accent);
+	outline-offset: 3px;
+}
+/*
+ * Markdown 正文里的链接：全局 a 去掉了下划线，这里补一条安静的细线，悬停时线转成强调色。
+ * 只管渲染出来的正文，导航、页脚这些链接不受影响。
+ */
+.essay-body a,
+.about-body a,
+.proj-body a {
+	text-decoration-line: underline;
+	text-decoration-thickness: 1px;
+	text-underline-offset: 0.28em;
+	text-decoration-color: color-mix(in srgb, var(--muted) 50%, transparent);
+	transition: text-decoration-color 0.2s ease;
+}
+.essay-body a:hover,
+.about-body a:hover,
+.proj-body a:hover {
+	text-decoration-color: var(--accent);
 }
 img {
 	max-width: 100%;
@@ -62,15 +91,46 @@ img {
 	font-weight: 400;
 	letter-spacing: 0.2em;
 	margin: 14px 0 8px;
+	text-wrap: balance;
 }
 
-.page-enter-active,
+/* 路由切换：离场是短促的纯淡出，进场慢一点。 */
+.page-enter-active {
+	transition: opacity 0.42s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
 .page-leave-active {
-	transition: opacity 0.28s ease;
+	transition: opacity 0.18s ease-in;
 }
 .page-enter-from,
 .page-leave-to {
 	opacity: 0;
+}
+/*
+ * 内容页进场再带 8px 上浮；首页 main.home 是 position: fixed 的全屏地形，只淡入。
+ * 上浮用相对定位的 top 而不是 transform：transform 会让 main 成为其中 position: fixed
+ * 元素（文章页右侧的海拔尺）的包含块，过渡期间海拔尺会跟着 main 挪位，结束时再跳回原处。
+ */
+main.page.page-enter-active {
+	position: relative;
+	top: 0;
+	transition:
+		opacity 0.42s cubic-bezier(0.2, 0.7, 0.2, 1),
+		top 0.42s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+main.page.page-enter-from {
+	top: 8px;
+}
+
+/* 主题切换的"墨迹晕开"（src/theme/transition.ts）：不要默认的交叉淡化，由脚本给新画面做圆形展开。 */
+::view-transition-old(root),
+::view-transition-new(root) {
+	animation: none;
+	mix-blend-mode: normal;
+}
+/* 展开期间关掉颜色过渡：新画面是实时的，body 那 0.3s 的底色/字色过渡会在圆里再淡一遍。 */
+.theme-switching,
+.theme-switching * {
+	transition: none !important;
 }
 
 @media (max-width: 640px) {

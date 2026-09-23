@@ -18,6 +18,11 @@ const essayCount = loadEssays().length;
 const projectCount = loadProjects().length;
 
 const use3d = ref(false);
+/**
+ * 静态地形垫在画布下面，场景建好之前一直在（建不起来就一直留着），不留空白帧；和 use3d 一样
+ * 从 false 起步，SSR 与客户端首帧一致。开场动画期间它不跟着撤，而是随地形铺开的进度淡出，播完再撤。
+ */
+const sceneReady = ref(false);
 const hovered = ref<MarkerId | null>(null);
 const opacity = ref(1);
 const intro = ref(false);
@@ -108,6 +113,7 @@ onMounted(() => {
 	}
 });
 function onSceneReady() {
+	sceneReady.value = true;
 	if (intro.value) void playIntro();
 }
 /** 地形建不起来：退回静态图，并保证开场动画不会把图例名字留在隐藏状态。 */
@@ -119,19 +125,22 @@ function onSceneFailed() {
 
 <template>
 	<main class="home">
+		<Transition name="fallback">
+			<div
+				v-if="!sceneReady || intro"
+				class="fallback"
+				:style="intro ? { '--reveal': opacity } : undefined"
+				aria-hidden="true" />
+		</Transition>
 		<TerrainCanvas
 			v-if="use3d"
+			:class="{ 'is-ready': sceneReady }"
 			:hovered="hovered"
 			:opacity="opacity"
 			@hover="hovered = $event"
 			@select="go"
 			@ready="onSceneReady"
 			@failed="onSceneFailed" />
-		<img
-			v-else
-			class="fallback"
-			src="/terrain-fallback.svg"
-			alt="" />
 		<div
 			v-if="intro"
 			ref="introName"
@@ -144,6 +153,7 @@ function onSceneFailed() {
 			:project-count="projectCount"
 			:params="params"
 			:intro="intro"
+			:hovered="hovered"
 			@navigate="go"
 			@hover="hovered = $event" />
 		<div class="home-theme"><ThemeToggle /></div>
@@ -156,24 +166,64 @@ function onSceneFailed() {
 	position: fixed;
 	inset: 0;
 	overflow: hidden;
-	background: var(--bg);
 }
+/*
+ * 静态地形（scripts/render-fallback.mjs 生成）：SVG 只是一张 alpha 遮罩，颜色取 --fg，两套主题都对。
+ * cover 在比画幅窄的视口上只裁两边，和固定竖直视角的实时相机看到的一致。
+ * 开场动画期间 --reveal 是地形的铺开进度，静态图随之淡出。
+ */
 .fallback {
 	position: absolute;
-	inset: 0;
-	width: 100%;
-	height: 100%;
-	object-fit: cover;
-	color: var(--fg);
+	top: 0;
+	left: 0;
+	width: calc(var(--pixel-ratio, 1) * 100%);
+	height: calc(var(--pixel-ratio, 1) * 100%);
+	transform: scale(calc(1 / var(--pixel-ratio, 1)));
+	transform-origin: 0 0;
+	background-color: var(--fg);
+	-webkit-mask: url(/terrain-fallback.svg) center / cover no-repeat;
+	mask: url(/terrain-fallback.svg) center / cover no-repeat;
+	opacity: calc(1 - var(--reveal, 0));
+}
+/*
+ * WebGL 的线永远是 1 个设备像素（场景的 pixelRatio 封顶 2），SVG 里 1px 的描边在高分屏上却是
+ * 2 个设备像素，粗一倍。所以按 pixelRatio 倍大排版、再缩回来，描边落到屏幕上正好 1 个设备像素。
+ */
+@media (min-resolution: 1.5dppx) {
+	.fallback {
+		--pixel-ratio: 1.5;
+	}
+}
+@media (min-resolution: 2dppx) {
+	.fallback {
+		--pixel-ratio: 2;
+	}
+}
+/* 窄屏或触屏上实时场景用 low 档（见 TerrainCanvas.vue），行距不同，静态图换成对应的那张 */
+@media (max-width: 767px), (pointer: coarse) {
+	.fallback {
+		-webkit-mask-image: url(/terrain-fallback-low.svg);
+		mask-image: url(/terrain-fallback-low.svg);
+	}
+}
+/* 静态图淡出、画布淡入，同一个节奏 */
+.fallback-leave-active,
+.terrain-canvas {
+	transition: opacity 0.6s ease;
+}
+.fallback-leave-to,
+.terrain-canvas:not(.is-ready) {
+	opacity: 0;
 }
 .intro-name {
 	position: absolute;
 	z-index: 2;
 	left: 50%;
 	top: 45%;
-	font-size: 96px;
+	font-size: clamp(48px, 16vw, 96px);
 	font-weight: 600;
 	letter-spacing: 0.14em;
+	white-space: nowrap;
 	opacity: 0;
 	will-change: transform;
 }
@@ -187,7 +237,8 @@ function onSceneFailed() {
 	right: 24px;
 	bottom: 20px;
 }
-@media (pointer: coarse) {
+/* 触屏上没有滚轮和键盘；窄窗口里它会压到图例上 */
+@media (pointer: coarse), (max-width: 640px) {
 	.hint {
 		display: none;
 	}

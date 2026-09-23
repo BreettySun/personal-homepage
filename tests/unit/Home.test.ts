@@ -24,6 +24,20 @@ vi.mock('@/terrain/scene', () => ({
   },
 }))
 
+// 开场动画的时间线不自己播，测试调 intro.finish() 才算播完。
+type Timeline = { fromTo(): Timeline, to(): Timeline }
+const intro = { finish: () => {} }
+vi.mock('gsap', () => ({
+  gsap: {
+    set() {},
+    timeline({ onComplete }: { onComplete: () => void }) {
+      intro.finish = onComplete
+      const tl: Timeline = { fromTo: () => tl, to: () => tl }
+      return tl
+    },
+  },
+}))
+
 async function mountHome() {
   const router = createRouter({ history: createMemoryHistory(), routes })
   await router.push('/')
@@ -33,11 +47,12 @@ async function mountHome() {
   return w
 }
 
-describe('Home terrain fallback', () => {
+describe('Home static terrain', () => {
   beforeEach(() => {
     support.webgl = true
     support.reducedMotion = false
     scene.throws = false
+    intro.finish = () => { throw new Error('the intro timeline was never started') }
     sessionStorage.clear()
     // jsdom 没有 matchMedia；useTheme 会用到。
     vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener() {}, removeEventListener() {} }))
@@ -49,21 +64,39 @@ describe('Home terrain fallback', () => {
     vi.restoreAllMocks()
   })
 
-  it('renders the static image when WebGL is unsupported', async () => {
+  it('shows the static terrain when WebGL is unsupported', async () => {
     support.webgl = false
     const w = await mountHome()
 
-    expect(w.find('img.fallback').exists()).toBe(true)
+    expect(w.find('.fallback').exists()).toBe(true)
     expect(w.find('canvas').exists()).toBe(false)
   })
 
-  it('falls back to the static image when the scene fails to build', async () => {
+  it('keeps the static terrain when the scene fails to build', async () => {
     scene.throws = true
     const w = await mountHome()
     await flushPromises()
 
-    expect(w.find('img.fallback').exists()).toBe(true)
+    expect(w.find('.fallback').exists()).toBe(true)
     expect(w.find('canvas').exists()).toBe(false)
     expect(w.find('.legend-name').attributes('style') ?? '').not.toContain('visibility: hidden')
+  })
+
+  it('hands over to the canvas once the scene is ready', async () => {
+    sessionStorage.setItem('introPlayed', '1')
+    const w = await mountHome()
+
+    expect(w.find('canvas').exists()).toBe(true)
+    expect(w.find('.fallback').exists()).toBe(false)
+  })
+
+  it('keeps the static terrain under the first-visit intro until the intro has played', async () => {
+    const w = await mountHome()
+    expect(w.find('canvas').exists()).toBe(true)
+    expect(w.find('.fallback').exists()).toBe(true)
+
+    intro.finish()
+    await flushPromises()
+    expect(w.find('.fallback').exists()).toBe(false)
   })
 })
